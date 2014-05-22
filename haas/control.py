@@ -187,23 +187,31 @@ def check_same_non_empty_list(ls):
 
 
 def deploy_group(group_name):
-    group = get_entity_by_cond(Group,'group_name=="%s"'%group_name)
-    # get vlan id and label
-    vlan_id = group.vlans[0].vlan_id
-    vlan_name = group.vlans[0].nic_name
-    
-    vm_name = group.vm.vm_name
-    vm_node = haas.headnode.HeadNode(vm_name)
-    vm_node.add_nic(vlan_id)
-    vm_node.start()
-    
+    #get switch info <TODO> - make this global
     active_switch_str = cfg.get('general', 'active_switch')
     active_switch = sys.modules['haas.drivers.' + active_switch_str]
-    # based on nic label fetch the matching nic
-    for node in group.nodes:
+    #get group and vm info
+    group = get_entity_by_cond(Group,'group_name=="%s"'%group_name)
+    vm_name = group.vm.vm_name
+    vm_node = haas.headnode.HeadNode(vm_name)
+    nodes = group.nodes
+    
+    vm_node.start()    
+    #iterate over vlan objects ,vlan id and label and call helper
+    for vlan in group.vlans:
+        vlan_id, vlan_name = vlan.vlan_id, vlan.nic_name
+        print vlan_id , vlan_name
+        deploy_group_by_vlanid(vm_node, nodes, vlan_id,
+                                vlan_name, active_switch)   
+
+    
+def deploy_group_by_vlanid(vm_node, nodes, vlan_id, label, switch):
+    vm_node.add_nic(vlan_id)
+    #based on nic label fetch the matching nic and configure the switch
+    for node in nodes:
         for nic in node.nics:
-            if nic.name == vlan_name:
-                active_switch.set_access_vlan(nic.port.port_no, vlan_id)
+            if nic.name == label:
+                switch.set_access_vlan(nic.port.port_no, vlan_id)
 
 def create_headnode():
     conn = haas.headnode.Connection()

@@ -16,9 +16,6 @@ class_name={'group':Group,
             'node':Node,
             'user':User}
 
-#access switchconfig
-active_switch_str = cfg.get('general', 'active_switch')
-active_switch = sys.modules['haas.drivers.' + active_switch_str]
 
 def show_table(table_name):
     if table_name not in class_name:
@@ -189,39 +186,36 @@ def check_same_non_empty_list(ls):
     return ls[0]
 
 def deploy_group(group_name):
-    """ deploy_group function,                                                                                     
-        deploys vlans to the switch
-    """ 
+    """Deploy vlans to the switch,
+
+    based on matching NIC label
+    """
+    active_switch_str = cfg.get('general', 'active_switch')
+    active_switch = sys.modules['haas.drivers.' + active_switch_str] 
     # get group and vm info
     group = get_entity_by_cond(Group,'group_name=="%s"'%group_name)
     vm_name = group.vm.vm_name
     vm_node = haas.headnode.HeadNode(vm_name)
-    
-    add_nics_to_vm(group)    
-    vm_node.start()    
-    deploy_multiple_vlans(group) 
-   
-# helper function to add nics to vm
-def add_nics_to_vm(group):
+    add_nics_to_vm(group, vm_node)     
+    vm_node.start()
+    # deploy multiple vlans
+    for vlan in group.vlans:
+        deploy_vlan(group.nodes, vlan.vlan_id, vlan.nic_name, active_switch)
+             
+#helper function 
+def add_nics_to_vm(group, vm_node):
     for vlan in group.vlans:
         vm_node.add_nic(vlan.vlan_id)
+   
+def deploy_vlan(nodes, vlan_id, label, switch):
+    """Deploys single vlan in a group based
 
-def deploy_multiple_vlans(group):
-    """ deploy_vlan function deploys
-        multiple vlan in the group
-    """
-    for vlan in group.vlans:
-        deploy_vlan(group.nodes, vlan.vlan_id, vlan.vlan_name)
-
-def deploy_vlan(nodes, vlan_id, label)
-    """ deploy_vlan deploys single vlan
-        in a group based on matching label
-        from the NIC
+    on matching label from the NIC
     """
     for node in nodes:
         for nic in node.nics:
             if nic.name == label:
-                active_switch.set_access_vlan(nic.port.port_no, vlan_id)
+                switch.set_access_vlan(nic.port.port_no, vlan_id)
 
 def create_headnode():
     conn = haas.headnode.Connection()

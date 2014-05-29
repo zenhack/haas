@@ -1,4 +1,4 @@
-The devel branch of the haas provides no good automated way of tearing
+The master branch of the haas provides no good automated way of tearing
 down the network state created when deploying a group. Here's how to
 do it manually:
 

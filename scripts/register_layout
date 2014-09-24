@@ -1,0 +1,42 @@
+#!/usr/bin/env python
+
+# Copyright 2014 Massachusetts Open Cloud Contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the
+# License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an "AS
+# IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+# express or implied.  See the License for the specific language
+# governing permissions and limitations under the License.
+
+"""This is a simple script for registering the assets listed in
+'site-layout.json' to the haas database."""
+
+from subprocess import check_call
+import json
+
+def haas(*args):
+    args = map(str, args)
+    print args
+    check_call(['haas'] + args)
+
+layout_json_file = 'site-layout.json'
+layout_json_data = open(layout_json_file)
+layout = json.load(layout_json_data)
+layout_json_data.close()
+
+haas('switch_register', layout['switch'], layout['driver'])
+
+for node in layout['nodes']:
+    haas('node_register', node['name'], node['ipmi']['host'],
+        node['ipmi']['user'], node['ipmi']['pass'])
+    for nic in node['nics']:
+        haas('node_register_nic', node['name'], nic['name'], nic['mac'])
+        haas('port_register', layout['switch'], nic['port'])
+        haas('port_connect_nic', layout['switch'], 
+            nic['port'], node['name'], nic['name'])

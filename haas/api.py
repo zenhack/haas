@@ -105,7 +105,7 @@ def handle_client_errors(f):
                 'msg': e.message,
             }), e.status_code
         if resp:
-            logger.debug('API call succesful: %s' % resp)
+            logger.debug('API call succesful: %s', resp)
             return resp
         else:
             logger.debug('API call succesful, no response body')
@@ -218,7 +218,8 @@ def group_add_user(group, user):
     user = _must_find(db, model.User, user)
     group = _must_find(db, model.Group, group)
     if group in user.groups:
-        raise DuplicateError(user.label)
+        raise DuplicateError('User %s is already in group %s',
+                             (user.label, group.label))
     user.groups.append(group)
     db.commit()
 
@@ -233,7 +234,8 @@ def group_remove_user(group, user):
     user = _must_find(db, model.User, user)
     group = _must_find(db, model.Group, group)
     if group not in user.groups:
-        raise NotFoundError(user.label)
+        raise NotFoundError("User %s is not in group %s",
+                            (user.label, group.label))
     user.groups.remove(group)
     db.commit()
 
@@ -286,7 +288,7 @@ def project_apply(project):
     TODO: there are other possible errors, document them and how they are
     handled.
     """
-    driver_name = cfg.get('general', 'active_switch')
+    driver_name = cfg.get('general', 'driver')
     driver = importlib.import_module('haas.drivers.' + driver_name)
 
     db = model.Session()
@@ -300,7 +302,7 @@ def project_apply(project):
                 # port might as well not exist.
                 logging.getLogger(__name__).warn(
                     'Not attaching NIC %s to network %s; NIC not on a port.' %
-                    (nic.label, network.label))
+                    (nic.label, nic.network.label))
             elif nic.network:
                 net_map[nic.port.label] = nic.network.network_id
             else:
@@ -641,13 +643,11 @@ def network_create(network, project):
     If the network cannot be allocated (due to resource exhaustion), an
     AllocationError will be raised.
     """
-    projectname = project
-
     db = model.Session()
     _assert_absent(db, model.Network, network)
     project = _must_find(db, model.Project, project)
 
-    driver_name = cfg.get('general', 'active_switch')
+    driver_name = cfg.get('general', 'driver')
     driver = importlib.import_module('haas.drivers.' + driver_name)
     network_id = driver.get_new_network_id(db)
     if network_id is None:
@@ -674,7 +674,7 @@ def network_delete(network):
     if network.project.dirty:
         raise BlockedError("Project dirty")
 
-    driver_name = cfg.get('general', 'active_switch')
+    driver_name = cfg.get('general', 'driver')
     driver = importlib.import_module('haas.drivers.' + driver_name)
     driver.free_network_id(db, network.network_id)
 
@@ -707,7 +707,7 @@ def switch_delete(switch):
     db.commit()
 
 
-@rest_call('PUT', '/switch/<switch>/port/<port>')
+@rest_call('PUT', '/switch/<switch>/port/<path:port>')
 def port_register(switch, port):
     """Register a port on a switch.
 
@@ -725,7 +725,7 @@ def port_register(switch, port):
     db.commit()
 
 
-@rest_call('DELETE', '/switch/<switch>/port/<port>')
+@rest_call('DELETE', '/switch/<switch>/port/<path:port>')
 def port_delete(switch, port):
     """Delete a port on a switch.
 
@@ -740,7 +740,7 @@ def port_delete(switch, port):
     db.commit()
 
 
-@rest_call('POST', '/switch/<switch>/port/<port>/connect_nic')
+@rest_call('POST', '/switch/<switch>/port/<path:port>/connect_nic')
 def port_connect_nic(switch, port, node, nic):
     """Connect a port on a switch to a nic on a node.
 
@@ -765,7 +765,7 @@ def port_connect_nic(switch, port, node, nic):
     db.commit()
 
 
-@rest_call('POST', '/switch/<switch>/port/<port>/detach_nic')
+@rest_call('POST', '/switch/<switch>/port/<path:port>/detach_nic')
 def port_detach_nic(switch, port):
     """Detach attached nic from a port.
 
@@ -789,7 +789,7 @@ def list_free_nodes():
     """List all nodes not in a project."""
     db = model.Session()
     nodes = db.query(model.Node).filter_by(project_id=None).all()
-    nodes = map(lambda n: n.label, nodes)
+    nodes = [n.label for n in nodes]
     return json.dumps(nodes)
 
 
@@ -799,9 +799,17 @@ def list_project_nodes(project):
     db = model.Session()
     project = _must_find(db, model.Project, project)
     nodes = project.nodes
-    nodes = map(lambda n: n.label, nodes)
+    nodes = [n.label for n in nodes]
     return json.dumps(nodes)
 
+@rest_call('GET', '/project/<project>/networks')
+def list_project_networks(project):
+    """List all networks belonging to a project."""
+    db = model.Session()
+    project = _must_find(db, model.Project, project)
+    networks = project.networks
+    networks = [n.label for n in networks]
+    return json.dumps(networks)
 
 @rest_call('GET', '/node/<nodename>')
 def show_node(nodename):
@@ -811,7 +819,7 @@ def show_node(nodename):
     return json.dumps({
         'name': node.label,
         'free': node.project_id is None,
-        'nics': map(lambda n: n.label, node.nics),
+        'nics': [n.label for n in node.nics],
     })
 
 
@@ -823,7 +831,7 @@ def show_headnode(nodename):
     return json.dumps({
         'name': headnode.label,
         'project': headnode.project.label,
-        'hnics': map(lambda n: n.label, headnode.hnics),
+        'hnics': [n.label for n in headnode.hnics],
         'vncport': headnode.get_vncport(),
     })
 
@@ -845,7 +853,7 @@ def _assert_absent(session, cls, name):
     """
     obj = session.query(cls).filter_by(label=name).first()
     if obj:
-        raise DuplicateError(cls.__name__ + ': ' + name)
+        raise DuplicateError("%s %s already exists." % (cls.__name__, name))
 
 
 def _must_find(session, cls, name):
@@ -862,7 +870,7 @@ def _must_find(session, cls, name):
     """
     obj = session.query(cls).filter_by(label=name).first()
     if not obj:
-        raise NotFoundError(cls.__name__ + ': ' + name)
+        raise NotFoundError("%s %s does not exist." % (cls.__name__, name))
     return obj
 
 def _namespaced_query(session, obj_outer, cls_inner, name_inner):
@@ -885,7 +893,9 @@ def _assert_absent_n(session, obj_outer, cls_inner, name_inner):
     """
     obj_inner = _namespaced_query(session, obj_outer, cls_inner, name_inner)
     if obj_inner is not None:
-        raise DuplicateError(cls_inner.__name__ + " " + obj_outer.label + " " + name_inner)
+        raise DuplicateError("%s %s on %s %s already exists" %
+                             (cls_inner.__name__, name_inner,
+                              obj_outer.__class__.__name__, obj_outer.label))
 
 def _must_find_n(session, obj_outer, cls_inner, name_inner):
     """Searches the database for a "namespaced" object, such as a nic on a node.
@@ -901,5 +911,7 @@ def _must_find_n(session, obj_outer, cls_inner, name_inner):
     """
     obj_inner = _namespaced_query(session, obj_outer, cls_inner, name_inner)
     if obj_inner is None:
-        raise NotFoundError(cls_inner.__name__ + " " + obj_outer.label + " " + name_inner)
+        raise NotFoundError("%s %s on %s %s does not exist." %
+                            (cls_inner.__name__, name_inner,
+                             obj_outer.__class__.__name__, obj_outer.label))
     return obj_inner

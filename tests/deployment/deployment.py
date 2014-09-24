@@ -17,8 +17,9 @@ internal setup only and will most likely not work on
 other HaaS configurations."""
 
 from haas import api, model
-from haas.drivers.dell import get_vlan_list
+from haas.drivers.driver_tools.vlan import get_vlan_list
 from haas.test_common import *
+import importlib
 import json
 import pexpect
 import pytest
@@ -35,7 +36,9 @@ class TestHeadNode:
         api.headnode_create('hn-0', 'anvil-nextgen')
         api.headnode_create_hnic('hn-0', 'hnic-0', 'de:ad:be:ef:20:14')
         api.headnode_connect_network('hn-0', 'hnic-0', 'spider-web')
+        assert json.loads(api.show_headnode('hn-0'))['vncport'] is None
         api.headnode_start('hn-0')
+        assert json.loads(api.show_headnode('hn-0'))['vncport'] is not None
 
 
 class TestNetwork:
@@ -44,49 +47,17 @@ class TestNetwork:
     @headnode_cleanup
     def test_isolated_networks(self, db):
 
+        driver_name = cfg.get('general', 'driver')
+        driver = importlib.import_module('haas.drivers.' + driver_name)
+
         def get_switch_vlans():
-            # load the configuration:
-            switch_ip = cfg.get('switch dell', 'ip')
-            switch_user = cfg.get('switch dell', 'user')
-            switch_pass = cfg.get('switch dell', 'pass')
+            return driver.get_switch_vlans(get_vlan_list())
 
-            # connect to the switch, and log in:
-            console = pexpect.spawn('telnet ' + switch_ip)
-            console.expect('User Name:')
-            console.sendline(switch_user)
-            console.expect('Password:')
-            console.sendline(switch_pass)
-
-            #Regex to handle different prompt at switch 
-            #[\r\n]+ will handle any newline
-            #.+ will handle any character after newline 
-            # this sequence terminates with #
-            console.expect(r'[\r\n]+.+#')
-            cmd_prompt = console.after
-            cmd_prompt = cmd_prompt.strip(' \r\n\t')
-
-            # get possible vlans from config
-            vlan_cfgs = []
-            for vlan in get_vlan_list():
-                console.sendline('show vlan tag %d' % vlan)
-                console.expect(cmd_prompt)
-                vlan_cfgs.append(console.before)
-
-            # close session
-            console.sendline('exit')
-            console.expect(pexpect.EOF)
-
-            return vlan_cfgs
-
-        def get_network(intfc, vlan_cfgs):
-            """Returns all interfaces on a network"""
-            trunk_port = cfg.get('switch dell', 'trunk_port')
-            for vlan_cfg in vlan_cfgs:
-                if intfc in vlan_cfg:
-                    regex = re.compile(r'gi\d+\/\d+\/\d+-?\d?\d?')
-                    network = regex.findall(vlan_cfg)
-                    network.remove(trunk_port)
-                    return network
+        def get_network(port, vlan_cfg):
+            """Returns all interfaces on the same network as a given port"""
+            for vlan in vlan_cfg:
+                if port in vlan_cfg[vlan]:
+                    return vlan_cfg[vlan]
             return []
         
         def create_networks(): 
@@ -118,6 +89,7 @@ class TestNetwork:
 
             # Assert that n0 and n1 are not on any network
             vlan_cfgs = get_switch_vlans()
+
             assert get_network(nodes[0]['port'], vlan_cfgs) == []
             assert get_network(nodes[1]['port'], vlan_cfgs) == []
 
@@ -177,13 +149,8 @@ class TestNetwork:
         api.group_create('acme-code')
         api.project_create('anvil-nextgen', 'acme-code')
         
-        # Try the create_networks tests, then always run the delete_networks
-        # tests.  Its important to always run delete_networks because it
-        # performs cleanup in addition to running additional tests.
-        try:
-            create_networks()
-        finally:
-            delete_networks()
+        create_networks()
+        delete_networks()
 
     @deployment_test
     @headnode_cleanup

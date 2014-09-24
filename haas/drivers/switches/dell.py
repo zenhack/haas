@@ -14,9 +14,6 @@
 
 """A switch driver for the Dell Powerconnect
 
-See the documentation for the haas.drivers package for a description of this
-module's interface.
-
 Currently the driver uses telnet to connect to the switch's console; in
 the long term we want to be using SNMP.
 """
@@ -25,36 +22,13 @@ import os
 import pexpect
 import re
 
-from haas.config import cfg
 
 from haas.dev_support import no_dry_run
 
-from haas.model import Model, Session
-from sqlalchemy import *
-
-class Dell_Vlan(Model):
-    """A VLAN for the Dell switch
-
-    This is used to track which vlan numbers are available; when a Network is
-    created, it must allocate a Vlan, to ensure that:
-
-    1. The VLAN number it is using is unique, and
-    2. The VLAN number is actually allocated to the HaaS; on some deployments we
-       may have specific vlan numbers that we are allowed to use.
-    """
-    vlan_no = Column(Integer, nullable=False, unique=True)
-    available = Column(Boolean, nullable=False)
-
-    def __init__(self, vlan_no):
-        self.vlan_no = vlan_no
-        self.available = True
-        # XXX: This is pretty gross; it arguably doesn't even make sense for
-        # Vlan to have a label, but we need to do some refactoring for that.
-        self.label = str(vlan_no)
-
+from haas.drivers.driver_tools.vlan import *
 
 @no_dry_run
-def apply_networking(net_map):
+def apply_networking(net_map, config):
     def set_access_vlan(port, vlan_id):
         """Set a port to access a given vlan.
 
@@ -81,9 +55,9 @@ def apply_networking(net_map):
         console.expect(config_prompt)
 
     # load the configuration:
-    switch_ip = cfg.get('switch dell', 'ip')
-    switch_user = cfg.get('switch dell', 'user')
-    switch_pass = cfg.get('switch dell', 'pass')
+    switch_ip = config["ip"]
+    switch_user = config["user"]
+    switch_pass = config["pass"]
 
     # connect to the switch, and log in:
     console = pexpect.spawn('telnet ' + switch_ip)
@@ -120,39 +94,40 @@ def apply_networking(net_map):
     console.expect(pexpect.EOF)
 
 
+# This doesn't get @no_dry_run, because returning None here is a bad idea
+def get_switch_vlans(config, vlan_list):
+    # load the configuration:
+    switch_ip = config['ip']
+    switch_user = config['user']
+    switch_pass = config['pass']
 
-def get_new_network_id(db):
-    vlan = db.query(Dell_Vlan).filter_by(available = True).first()
-    if not vlan:
-        return None
-    vlan.available = False
-    returnee = str(vlan.vlan_no)
-    return returnee
+    # connect to the switch, and log in:
+    console = pexpect.spawn('telnet ' + switch_ip)
+    console.expect('User Name:')
+    console.sendline(switch_user)
+    console.expect('Password:')
+    console.sendline(switch_pass)
 
-def free_network_id(db, net_id):
-    vlan = db.query(Dell_Vlan).filter_by(vlan_no = net_id).first()
-    if not vlan:
-        pass
-    vlan.available = True
+    #Regex to handle different prompt at switch
+    #[\r\n]+ will handle any newline
+    #.+ will handle any character after newline
+    # this sequence terminates with #
+    console.expect(r'[\r\n]+.+#')
+    cmd_prompt = console.after
+    cmd_prompt = cmd_prompt.strip(' \r\n\t')
 
-def get_vlan_list():
-    vlan_str = cfg.get('switch dell', 'vlans')
-    returnee = []
-    for r in vlan_str.split(","):
-        r = r.strip().split("-")
-        if len(r) == 1:
-            returnee.append(int(r[0]))
-        else:
-            returnee += range(int(r[0]), int(r[1])+1)
-    return returnee
+    # get possible vlans from config
+    vlan_cfgs = {}
+    # This regex matches the notation for ports on the Dell switch.  For
+    # example, 'gi1/0/24'
+    regex = re.compile(r'gi\d+\/\d+\/\d+-?\d?\d?')
+    for vlan in get_vlan_list():
+        console.sendline('show vlan tag %d' % vlan)
+        console.expect(cmd_prompt)
+        vlan_cfgs[vlan] = regex.findall(console.before)
 
-def init_db(create=False):
-    if not create:
-        return
-    vlan_list = get_vlan_list()
-    db = Session()
-    for vlan in vlan_list:
-        db.add(Dell_Vlan(vlan))
-    db.commit()
+    # close session
+    console.sendline('exit')
+    console.expect(pexpect.EOF)
 
-    
+    return vlan_cfgs

@@ -218,6 +218,20 @@ class TestProjectApply:
         api.node_connect_network('node-98', 'eth0', 'hammernet')
         api.project_apply('anvil-nextgen')
 
+    @database_only
+    def test_project_apply_nic_no_port(self, db):
+        api.node_register('node-99', 'ipmihost', 'root', 'tapeworm')
+        api.node_register_nic('node-99', 'eth0', 'DE:AD:BE:EF:20:14')
+
+        api.group_create('acme-corp')
+        api.project_create('anvil-nextgen', 'acme-corp')
+
+        api.project_connect_node('anvil-nextgen', 'node-99')
+        api.network_create('hammernet', 'anvil-nextgen')
+        api.node_connect_network('node-99', 'eth0', 'hammernet')
+
+        api.project_apply('anvil-nextgen')
+
 
 class TestProjectConnectDetachNode:
 
@@ -1383,6 +1397,31 @@ class TestQuery:
         result = json.loads(api.list_project_nodes('anvil-nextgen'))
         result.sort()
         assert result == ['data', 'robocop']
+
+    @database_only
+    def test_project_list_networks(self, db):
+        api.group_create('acme-corp')
+        api.project_create('anvil-nextgen', 'acme-corp')
+
+        api.network_create('pxe', 'anvil-nextgen')
+        api.network_create('public', 'anvil-nextgen')
+        api.network_create('private', 'anvil-nextgen')
+
+        result = json.loads(api.list_project_networks('anvil-nextgen'))
+        # For the lists to be equal, the ordering must be the same:
+        result.sort()
+        assert result == [
+                'private',
+                'public',
+                'pxe'
+        ]
+
+    @database_only
+    def test_no_project_networks(self, db):
+        api.group_create('acme-corp')
+        api.project_create('anvil-nextgen', 'acme-corp')
+        assert json.loads(api.list_project_nodes('anvil-nextgen')) == []
+
 
     @database_only
     def test_show_headnode(self, db):

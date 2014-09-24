@@ -58,7 +58,7 @@ def database_only(f):
     def config_initialize():
         # Use the 'null' backend for these tests
         cfg.add_section('general')
-        cfg.set('general', 'active_switch', 'null')
+        cfg.set('general', 'driver', 'null')
         cfg.add_section('devel')
         cfg.set('devel', 'dry_run', True)
 
@@ -78,7 +78,7 @@ def deployment_test(f):
     database and a config that is setup to operate with a dell switch.  Used
     for testing functions that pertain to the state of the outside world.
     These tests are very specific to our setup and are used for internal
-    testing purposes. These tests are unlikely to work with other HaaS 
+    testing purposes. These tests are unlikely to work with other HaaS
     configurations.
     """
 
@@ -88,24 +88,31 @@ def deployment_test(f):
         # VLAN range.
         # XXX: Currently, the deployment tests only support the Dell driver.
         cfg.read('deployment.cfg')
- 
+
     def allocate_nodes():
-        arch_json_file = cfg.get('deployment tests', 'site_layout_json')
-        arch_json_data = open(arch_json_file)
-        arch = json.load(arch_json_data)
-        arch_json_data.close()
+        layout_json_data = open('site-layout.json')
+        layout = json.load(layout_json_data)
+        layout_json_data.close()
 
-        api.switch_register(arch['switch'], arch['driver'])
+        api.switch_register(layout['switch'], layout['driver'])
 
-        for node in arch['nodes']:
-            api.node_register(node['name'], node['ipmi']['host'], 
+        netmap = {}
+        for node in layout['nodes']:
+            api.node_register(node['name'], node['ipmi']['host'],
                 node['ipmi']['user'], node['ipmi']['pass'])
             for nic in node['nics']:
                 api.node_register_nic(node['name'], nic['name'], nic['mac'])
-                api.port_register(arch['switch'], nic['port'])
+                api.port_register(layout['switch'], nic['port'])
                 api.port_connect_nic(
-                    arch['switch'], nic['port'], 
+                    layout['switch'], nic['port'],
                     node['name'], nic['name'])
+                netmap[nic['port']] = None
+
+        # Now ensure that all of these ports are turned off
+        driver_name = cfg.get('general', 'driver')
+        driver = importlib.import_module('haas.drivers.' + driver_name)
+        driver.apply_networking(netmap)
+
 
     @wraps(f)
     @clear_configuration
@@ -126,12 +133,11 @@ def headnode_cleanup(f):
     """
 
     def undefine_headnodes(db):
-        trunk_nic = cfg.get('headnode', 'trunk_nic')
         for hn in db.query(Headnode):
-            # XXX: Our current version of libvirt has a bug that causes this 
-            # command to hang for a minute and throw an error before 
-            # completing successfully.  For this reason, we are ignoring any 
-            # errors thrown by 'virsh undefine'. This should be changed once 
+            # XXX: Our current version of libvirt has a bug that causes this
+            # command to hang for a minute and throw an error before
+            # completing successfully.  For this reason, we are ignoring any
+            # errors thrown by 'virsh undefine'. This should be changed once
             # we start using a version of libvirt that has fixed this bug.
             call(['virsh', 'undefine', hn._vmname(), '--remove-all-storage'])
 

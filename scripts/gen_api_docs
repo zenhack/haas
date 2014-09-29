@@ -1,0 +1,51 @@
+#!/usr/bin/env python
+
+from haas import api
+from haas.http import _url_map, APIError
+import sys
+import inspect
+
+entries = {}
+for rule in _url_map.iter_rules():
+    path = rule.rule
+    method = filter(lambda x: x in ('GET', 'PUT', 'POST', 'DELETE'),
+                    rule.methods)[0]
+    func = rule.endpoint
+    argnames, _, _, _ = inspect.getargspec(func)
+    form_params = filter(lambda arg: ('<'+arg+'>') not in path, argnames)
+    form_params = ', '.join(['`%s`' % p for p in form_params])
+    entries[func.__name__] = (
+"""## %s
+
+method: `%s`
+path: `%s`
+form parameters: %s
+
+%s
+
+""" % (func.__name__, method, path, form_params or 'none', func.__doc__))
+
+sys.stdout.write(
+"""This document outlines the HTTP API exposed by the HaaS.
+
+# API calls
+
+""")
+
+names = entries.keys()
+names.sort()
+for name in names:
+    sys.stdout.write(entries[name])
+
+sys.stdout.write(
+"""# Errors
+
+""")
+
+for cls in APIError.__subclasses__():
+    sys.stdout.write(
+"""## %s
+
+%s
+
+""" % (cls.__name__, cls.__doc__))

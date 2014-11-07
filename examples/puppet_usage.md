@@ -8,4 +8,13 @@ In order to use the manifest:
 
 3) Share this folder with the virtual machine you want to make a PXE node
 
-4) puppet apply --manifestdir /[path to this directory]/manifests --detailed-exitcodes /[path to this directory]/manifests/site.pp
+    i) add to xml:
+
+        <filesystem type='mount' accessmode='mapped'>
+            <source dir='/tmp/shared'/>
+            <target dir='tag'/>
+        </filesystem>
+
+    ii) mount -t 9p -o trans=virtio,version=9p2000.L tag /mnt/[path to this directory]/
+
+4) puppet apply --manifestdir /mnt/[path to this directory]/manifests --detailed-exitcodes /mnt/[path to this directory]/manifests/site.pp

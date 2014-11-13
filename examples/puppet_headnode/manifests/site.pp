@@ -73,7 +73,7 @@ file { $centosDir :
 
 file { "/var/lib/tftpboot/centos/pxelinux.cfg":
   ensure  => present,
-  source  => "/root/haas/examples/puppet_headnode/manifests/static/centos_pxelinux_cfg",
+  source  => "/root/haas/examples/puppet_headnode/manifests/static/pxelinux_cfg",
   require => [Package["tftpd-hpa"], File[$centosDir]],
 }
 
@@ -91,24 +91,24 @@ file { "/var/lib/tftpboot/centos/initrd.img":
 
 file { "/var/lib/tftpboot/centos/ks.cfg":
   ensure  => present,
-  source  => "/root/haas/examples/puppet_headnode/ks.cfg",
+  source  => "/root/haas/examples/puppet_headnode/manifests/static/ks.cfg",
   require => File[$centosDir],
 }
 
-file { "/usr/local/bin/make_links":
+file { "/usr/local/bin/make-links":
   ensure  => present,
-  source  => "/root/haas/examples/puppet_headnode/manifests/static/make_links",
+  source  => "/root/haas/examples/puppet_headnode/manifests/static/make-links",
 }
 
 file { "/usr/local/bin/boot_notify.py":
   ensure  => present,
-  source  => "/root/haas/examples/puppet_headnode/boot_notify.py",
+  source  => "/root/haas/examples/puppet_headnode/manifests/static/boot_notify.py",
   mode  => 755,
 }
 
 file { "/etc/rc.local":
   ensure  => present,
-  source  => "/root/haas/examples/puppet_headnode/rc.local",
+  source  => "/root/haas/examples/puppet_headnode/manifests/static/rc.local",
   mode  => 755,
 }
 

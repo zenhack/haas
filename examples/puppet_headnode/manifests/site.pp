@@ -35,9 +35,9 @@ file { '/etc/default/isc-dhcp-server':
 }
 
 # dhcp configuration
-file { '/etc/dhcp/dhcp.conf':
+file { '/etc/dhcp/dhcpd.conf':
   ensure  => present,
-  source  => "/root/haas/examples/puppet_headnode/manifests/static/dhcp.conf",
+  source  => "/root/haas/examples/puppet_headnode/manifests/static/dhcpd.conf",
   require => Package["isc-dhcp-server"],
   notify  => Service["isc-dhcp-server"]
 }

@@ -66,27 +66,33 @@ file { "/var/lib/tftpboot/pxelinux.cfg/default":
   require => Package["tftpd-hpa"],
 }
 
+$centosDir = "/var/lib/tftpboot/centos"
+file { $centosDir :
+  ensure => directory,
+}
+
 file { "/var/lib/tftpboot/centos/pxelinux.cfg":
   ensure  => present,
   source  => "/root/haas/examples/puppet_headnode/manifests/static/centos_pxelinux_cfg",
-  require => Package["tftpd-hpa"],
+  require => [Package["tftpd-hpa"], File[$centosDir]],
 }
 
 file { "/var/lib/tftpboot/centos/vmlinuz":
   ensure  => present,
   source  => "/mnt/iso/isolinux/vmlinuz",
-  require  => Mount["/mnt/iso"]
+  require  => [Mount["/mnt/iso"], File[$centosDir]],
 }
 
 file { "/var/lib/tftpboot/centos/initrd.img":
   ensure  => present,
   source  => "/mnt/iso/isolinux/initrd.img",
-  require  => Mount["/mnt/iso"]
+  require  => [Mount["/mnt/iso"], File[$centosDir]],
 }
 
 file { "/var/lib/tftpboot/centos/ks.cfg":
   ensure  => present,
   source  => "/root/haas/examples/puppet_headnode/ks.cfg",
+  require => File[$centosDir],
 }
 
 file { "/usr/local/bin/make_links":

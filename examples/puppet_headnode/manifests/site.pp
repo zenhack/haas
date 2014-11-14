@@ -59,22 +59,23 @@ file { "/etc/inetd.conf":
 # pxe configuration
 file { "/var/lib/tftpboot/pxelinux.cfg":
   ensure => directory,
+  require => Package["tftpd-hpa"],
 } ->
 file { "/var/lib/tftpboot/pxelinux.cfg/default":
   ensure  => present,
   source  => "/root/haas/examples/puppet_headnode/manifests/static/default",
-  require => Package["tftpd-hpa"],
 }
 
 $centosDir = "/var/lib/tftpboot/centos"
 file { $centosDir :
   ensure => directory,
+  require => Package["tftpd-hpa"],
 }
 
 file { "/var/lib/tftpboot/centos/pxelinux.cfg":
   ensure  => present,
   source  => "/root/haas/examples/puppet_headnode/manifests/static/pxelinux_cfg",
-  require => [Package["tftpd-hpa"], File[$centosDir]],
+  require => File[$centosDir],
 }
 
 file { "/var/lib/tftpboot/centos/vmlinuz":

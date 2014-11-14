@@ -45,7 +45,8 @@ file { '/etc/dhcp/dhcpd.conf':
 # tftp configuration
 file { "/etc/default/tftpd-hpa":
   ensure  => present,
-  require =>  Package["tftpd-hpa"],
+  require => Package["tftpd-hpa"],
+  notify  => Service["tftpd-hpa"],
   source  => "/root/haas/examples/puppet_headnode/manifests/static/tftpd-hpa",
 }
 

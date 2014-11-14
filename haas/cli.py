@@ -19,7 +19,6 @@ from haas.config import cfg
 import logging
 import inspect
 import sys
-import urllib
 import requests
 import json
 
@@ -69,7 +68,7 @@ def check_status_code(response):
 def object_url(*args):
     url = cfg.get('client', 'endpoint')
     for arg in args:
-        url += '/' + urllib.quote(arg,'')
+        url += '/' + arg
     return url
 
 def do_put(url, data={}):

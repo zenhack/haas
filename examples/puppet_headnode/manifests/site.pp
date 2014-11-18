@@ -116,15 +116,14 @@ file { "/etc/rc.local":
 
 ## put the bootloader in the tftp dir.
 
-$bootfiles = [
+
+file { [
   "pxelinux.0",
   "menu.c32",
   "memdisk",
   "mboot.c32",
   "chain.c32",
-]
-
-file { $bootfiles :
+] :
   require => Package['syslinux-common'],
   source => "/usr/lib/syslinux/${title}",
   path => "/var/lib/tftpboot/${title}",

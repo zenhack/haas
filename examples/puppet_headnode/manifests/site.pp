@@ -117,18 +117,21 @@ file { "/etc/rc.local":
 ## put the bootloader in the tftp dir.
 
 
-file { [
+define pxecopy($filename) {
+  file { "/var/lib/tftpboot/${filename}":
+    require => Package['syslinux-common'],
+    source => "/usr/lib/syslinux/${filename}",
+    mode => 644,
+  }
+}
+
+pxecopy {[
   "pxelinux.0",
   "menu.c32",
   "memdisk",
   "mboot.c32",
   "chain.c32",
-] :
-  require => Package['syslinux-common'],
-  source => "/usr/lib/syslinux/${title}",
-  path => "/var/lib/tftpboot/${title}",
-  mode => 644,
-}
+]:}
 
 ## Services to restart ##
 service { 'isc-dhcp-server':

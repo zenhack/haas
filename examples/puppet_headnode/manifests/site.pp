@@ -100,6 +100,7 @@ file { "/var/lib/tftpboot/centos/ks.cfg":
 file { "/usr/local/bin/make-links":
   ensure  => present,
   source  => "/root/haas/examples/puppet_headnode/manifests/static/make-links",
+  mode => 755
 }
 
 file { "/usr/local/bin/boot_notify.py":

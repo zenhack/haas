@@ -46,7 +46,6 @@ file { '/etc/dhcp/dhcpd.conf':
 file { "/etc/default/tftpd-hpa":
   ensure  => present,
   require => Package["tftpd-hpa"],
-  notify  => Service["tftpd-hpa"],
   source  => "/root/haas/examples/puppet_headnode/manifests/static/tftpd-hpa",
 }
 
@@ -54,7 +53,6 @@ file { "/etc/inetd.conf":
   ensure  => present,
   require => Package["inetutils-inetd"],
   source  => "/root/haas/examples/puppet_headnode/manifests/static/inetd.conf",
-  notify  => Service["tftpd-hpa"]
 }
 
 # pxe configuration
@@ -119,10 +117,3 @@ service { 'isc-dhcp-server':
   ensure => running,
   enable => true,
 }
-
-service { 'tftpd-hpa':
-  ensure => running,
-  enable => true,
-  path  => "/etc/init.d/tftpd-hpa"
-}
-

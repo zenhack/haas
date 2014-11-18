@@ -117,10 +117,10 @@ file { "/etc/rc.local":
 ## put the bootloader in the tftp dir.
 
 
-define pxecopy($filename) {
-  file { "/var/lib/tftpboot/${filename}":
+define pxecopy() {
+  file { "/var/lib/tftpboot/${title}":
     require => Package['syslinux-common'],
-    source => "/usr/lib/syslinux/${filename}",
+    source => "/usr/lib/syslinux/${title}",
     mode => 644,
   }
 }

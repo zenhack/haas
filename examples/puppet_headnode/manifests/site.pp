@@ -4,7 +4,9 @@ package { [
     'apache2',
     'tftpd-hpa',
     'inetutils-inetd',
-    'python-flask',]:
+    'python-flask',
+    'syslinux-common',
+]:
   ensure  => present,
 }
 
@@ -110,6 +112,23 @@ file { "/etc/rc.local":
   ensure  => present,
   source  => "/root/haas/examples/puppet_headnode/manifests/static/rc.local",
   mode  => 755,
+}
+
+## put the bootloader in the tftp dir.
+
+$bootfiles = [
+  "pxelinux.0",
+  "menu.c32",
+  "memdisk",
+  "mboot.c32",
+  "chain.c32",
+]
+
+file { $bootfiles :
+  require => Package['syslinux-common'],
+  source => "/usr/lib/syslinux/${title}",
+  path => "/var/lib/tftpboot/${title}",
+  mode => 644,
 }
 
 ## Services to restart ##

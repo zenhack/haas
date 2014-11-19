@@ -12,7 +12,7 @@ To use these manifests:
 
 3. Install puppet:
 
-     apt-get install puppet # TODO CHECK THAT THIS WORK
+     apt-get install puppet
 
 4. Git clone the haas to /root, cd into the examples/puppet_headnode/, and apply the manifests:
 

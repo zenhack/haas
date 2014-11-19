@@ -3,6 +3,6 @@ default centos
 prompt 0
 timeout 0
 
-label linux
+label centos
         kernel centos/vmlinuz
         append ks=http://192.168.1.15/ks.cfg initrd=centos/initrd.img  

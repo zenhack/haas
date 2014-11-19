@@ -5,4 +5,4 @@ timeout 0
 
 label centos
         kernel centos/vmlinuz
-        append ks=http://192.168.1.15/ks.cfg initrd=centos/initrd.img  
+        append ks=http://192.168.1.15/centos/ks.cfg initrd=centos/initrd.img ksdevice=eth0

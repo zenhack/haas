@@ -1,7 +1,6 @@
 ## Packages to be installed ##
 package { [
     'isc-dhcp-server',
-    'apache2',
     'tftpd-hpa',
     'inetutils-inetd',
     'python-flask',

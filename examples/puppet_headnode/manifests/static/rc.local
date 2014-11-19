@@ -11,5 +11,5 @@
 #
 # By default this script does nothing.
 
-/usr/local/bin/boot_python.py &
+/usr/local/bin/boot_notify.py &
 exit 0

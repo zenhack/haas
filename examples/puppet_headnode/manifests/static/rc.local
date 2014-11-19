@@ -11,5 +11,5 @@
 #
 # By default this script does nothing.
 
-/usr/bin/boot_python.py &
+/usr/local/bin/boot_python.py &
 exit 0

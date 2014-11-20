@@ -18,18 +18,35 @@ automate the install.
 
     apt-get install puppet
 
-4. Git clone the haas to /root, cd into the examples/puppet_headnode/,
-   and apply the manifests:
+4. Git clone the haas to /root, cd into the examples/puppet_headnode/.
 
     cd /root
-    git clone https://github.com/CCI-MOC/haas.git
-    cd /haas/examples/puppet_headnode/manifests
-    puppet apply site.pp
+    git clone https://github.com/CCI-MOC/haas
+    cd haas/examples/puppet_headnode
+
+5. You may then wish to modify some of the files therein; in
+   particular:
+
+   * `manifests/static/pxelinux_cfg` is the pxelinux config file that
+     will be used to boot nodes into the installer. The `ksdevice=...`
+     parameter must refer to the nic that will be used to fetch the
+     kickstart file, which must be the nic that is on a network with
+     the headnode. (typically the boot nic). Adjust this if needed.
+   * Similarly, the kickstart file `manifests/static/ks.cfg` contains
+     information on setting up the network, including during the
+     install. This should be modified to match your system. See the
+     comments in that file for more detail.
+   * **very** importantly, change the default root password in the
+     ks.cfg. It's important to do this *before* performing the install.
+
+6. Finally, apply the manifests:
+
+    puppet apply manifests/site.pp
 
    Note that the haas repo *must* be located under /root; the puppet
    manifests hard-code paths to certain files.
 
-5. Reboot the headnode.
+7. Reboot the headnode.
 
 # Use
 
@@ -47,5 +64,4 @@ their next boot (by default, they will chainload to the disk). You can
 then use the HaaS API to force-reboot the nodes.
 
 Upon completion of the install, the corresponding links will be deleted,
-and the node will boot into the new OS for the first time. The default
-root password is `r00tme`; You should change this as soon as possible.
+and the node will boot into the new OS for the first time.

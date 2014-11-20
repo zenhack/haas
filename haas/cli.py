@@ -16,12 +16,8 @@
 from haas import config
 from haas.config import cfg
 
-import logging
-import inspect
-import sys
-import urllib
-import requests
-import json
+import logging, os, inspect, sys
+import urllib, json, requests
 
 from functools import wraps
 
@@ -67,7 +63,10 @@ def check_status_code(response):
 # TODO: This function's name is no longer very accurate.  As soon as it is
 # safe, we should change it to something more generic.
 def object_url(*args):
-    url = cfg.get('client', 'endpoint')
+    # Prefer an environmental variable for getting the endpoint if available.
+    url = os.environ.get('HAAS_ENDPOINT')
+    if url == None:
+        url = cfg.get('client', 'endpoint')
     for arg in args:
         url += '/' + urllib.quote(arg,'')
     return url
@@ -386,23 +385,7 @@ def main():
     There is a script located at ${source_tree}/scripts/haas, which invokes
     this function.
     """
-    config.load()
-
-    if cfg.has_option('general', 'log_level'):
-        LOG_SET = ["CRITICAL", "DEBUG", "ERROR", "FATAL", "INFO", "WARN",
-                   "WARNING"]
-        log_level = cfg.get('general', 'log_level').upper()
-        if log_level in LOG_SET:
-            # Set to mnemonic log level
-            logging.basicConfig(level=getattr(logging, log_level))
-        else:
-            # Set to 'warning', and warn that the config is bad
-            logging.basicConfig(level=logging.WARNING)
-            logging.getLogger(__name__).warning(
-                "Invalid debugging level %s defaulted to WARNING"% log_level)
-    else:
-        # Default to 'warning'
-        logging.basicConfig(level=logging.WARNING)
+    config.load(requireConfigFile=False)
 
     if len(sys.argv) < 2 or sys.argv[1] not in command_dict:
         # Display usage for all commands

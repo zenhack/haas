@@ -58,7 +58,7 @@ addresses to be supplied on its standard input, one per line, e.g:
     ...
 
 Each of these should be the mac address off of which you expect a node
-too boot. `make-links` will then make some symlinks, the effect of which
+to boot. `make-links` will then make some symlinks, the effect of which
 is that the corresponding nodes will boot into the CentOS installer on
 their next boot (by default, they will chainload to the disk). You can
 then use the HaaS API to force-reboot the nodes.

@@ -30,6 +30,18 @@ import os
 Base=declarative_base()
 Session = sessionmaker()
 
+# Many DBMSes (including mysql) require an explicit length parameter for
+# string/varchar columns. Some fields have an obvious "optimal" value,
+# whereas for others we just need to pick something that's "big enough
+# for reasonable uses." We define some symbolic values here:
+VCHAR_LEN = {
+    'uuid': len(str(uuid.uuid1())),
+    'macaddr': len('00:11:22:33:44:55'),
+    'default': 255,
+    'sha512_pass': len(sha512_crypt.encrypt('secret')),
+}
+
+
 # A joining table for users and projects, which have a many to many relationship:
 user_projects = Table('user_projects', Base.metadata,
                     Column('user_id', Integer, ForeignKey('user.id')),
@@ -88,7 +100,7 @@ class Model(AnonModel):
     objects descend from this class.
     """
     __abstract__ = True
-    label = Column(String, nullable=False)
+    label = Column(String(VCHAR_LEN['default']), nullable=False)
 
     def __repr__(self):
         return '%s<%r>' % (self.__class__.__name__, self.label)
@@ -102,7 +114,7 @@ class Nic(Model):
     owner     = relationship("Node",backref=backref('nics'))
 
     # The mac address of the nic:
-    mac_addr  = Column(String)
+    mac_addr  = Column(String(VCHAR_LEN['macaddr']))
 
     # The switch port to which the nic is attached:
     port_id   = Column(Integer,ForeignKey('port.id'))
@@ -127,9 +139,9 @@ class Node(Model):
     project       = relationship("Project",backref=backref('nodes'))
 
     # ipmi connection information:
-    ipmi_host = Column(String, nullable=False)
-    ipmi_user = Column(String, nullable=False)
-    ipmi_pass = Column(String, nullable=False)
+    ipmi_host = Column(String(VCHAR_LEN['default']), nullable=False)
+    ipmi_user = Column(String(VCHAR_LEN['default']), nullable=False)
+    ipmi_pass = Column(String(VCHAR_LEN['default']), nullable=False)
 
     def __init__(self, label, ipmi_host, ipmi_user, ipmi_pass):
         """Register the given node.
@@ -259,7 +271,7 @@ class Network(Model):
     allocated = Column(Boolean)
 
     # An identifier meaningful to the networking driver:
-    network_id    = Column(String, nullable=False)
+    network_id    = Column(String(VCHAR_LEN['default']), nullable=False)
 
     def __init__(self, creator, access, allocated, network_id, label):
         """Create a network.
@@ -297,7 +309,7 @@ class User(Model):
 
     # The user's salted & hashed password. We currently use sha512 as the
     # hashing algorithm:
-    hashed_password = Column(String)
+    hashed_password = Column(String(VCHAR_LEN['sha512_pass']))
 
     # The projects of which the user is a member.
     projects = relationship('Project', secondary = user_projects, backref = 'users')
@@ -335,11 +347,11 @@ class Headnode(Model):
 
     # True iff there are unapplied changes to the Headnode:
     dirty = Column(Boolean, nullable=False)
-    base_img = Column(String, nullable=False)
+    base_img = Column(String(VCHAR_LEN['default']), nullable=False)
 
     # We need a guaranteed unique name to generate the libvirt machine name;
     # The name is therefore a function of a uuid:
-    uuid = Column(String, nullable=False, unique=True)
+    uuid = Column(String(VCHAR_LEN['uuid']), nullable=False, unique=True)
 
     def __init__(self, project, label, base_img):
         """Create a headnode belonging to `project` with the given label."""

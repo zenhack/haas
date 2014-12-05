@@ -20,148 +20,128 @@ import pytest
 import json
 
 
-class TestUser:
+class TestUser(DBOnlyTest):
     """Tests for the haas.api.user_* functions."""
 
-    @database_only
-    def test_new_user(self, db):
-        api._assert_absent(db, model.User, 'bob')
+    def test_new_user(self):
+        api._assert_absent(self.db, model.User, 'bob')
         api.user_create('bob', 'foo')
 
-    @database_only
-    def test_duplicate_user(self, db):
+    def test_duplicate_user(self):
         api.user_create('alice', 'secret')
         with pytest.raises(api.DuplicateError):
                 api.user_create('alice', 'password')
 
-    @database_only
-    def test_delete_user(self, db):
+    def test_delete_user(self):
         api.user_create('bob', 'foo')
         api.user_delete('bob')
 
-    @database_only
-    def test_delete_missing_user(self, db):
+    def test_delete_missing_user(self):
         with pytest.raises(api.NotFoundError):
             api.user_delete('bob')
 
-    @database_only
-    def test_delete_user_twice(self, db):
+    def test_delete_user_twice(self):
         api.user_create('bob', 'foo')
         api.user_delete('bob')
         with pytest.raises(api.NotFoundError):
             api.user_delete('bob')
 
 
-class TestProjectCreateDelete:
+class TestProjectCreateDelete(DBOnlyTest):
     """Tests for the haas.api.project_* functions."""
 
-    @database_only
-    def test_project_create_success(self, db):
+    def test_project_create_success(self):
         api.project_create('anvil-nextgen')
-        api._must_find(db, model.Project, 'anvil-nextgen')
+        api._must_find(self.db, model.Project, 'anvil-nextgen')
 
-    @database_only
-    def test_project_create_duplicate(self, db):
+    def test_project_create_duplicate(self):
         api.project_create('anvil-nextgen')
         with pytest.raises(api.DuplicateError):
             api.project_create('anvil-nextgen')
 
-    @database_only
-    def test_project_delete(self, db):
+    def test_project_delete(self):
         api.project_create('anvil-nextgen')
         api.project_delete('anvil-nextgen')
         with pytest.raises(api.NotFoundError):
-            api._must_find(db, model.Project, 'anvil-nextgen')
+            api._must_find(self.db, model.Project, 'anvil-nextgen')
 
-    @database_only
-    def test_project_delete_nexist(self, db):
+    def test_project_delete_nexist(self):
         with pytest.raises(api.NotFoundError):
             api.project_delete('anvil-nextgen')
 
-    @database_only
-    def test_project_delete_hasnode(self, db):
+    def test_project_delete_hasnode(self):
         api.node_register('node-99', 'ipmihost', 'root', 'tapeworm')
         api.project_create('anvil-nextgen')
         api.project_connect_node('anvil-nextgen', 'node-99')
         with pytest.raises(api.BlockedError):
             api.project_delete('anvil-nextgen')
 
-    @database_only
-    def test_project_delete_success_nodesdeleted(self, db):
+    def test_project_delete_success_nodesdeleted(self):
         api.node_register('node-99', 'ipmihost', 'root', 'tapeworm')
         api.project_create('anvil-nextgen')
         api.project_connect_node('anvil-nextgen', 'node-99')
         api.project_detach_node('anvil-nextgen', 'node-99')
         api.project_delete('anvil-nextgen')
 
-    @database_only
-    def test_project_delete_hasnetwork(self, db):
+    def test_project_delete_hasnetwork(self):
         api.project_create('anvil-nextgen')
         network_create_simple('hammernet', 'anvil-nextgen')
         with pytest.raises(api.BlockedError):
             api.project_delete('anvil-nextgen')
 
-    @database_only
-    def test_project_delete_success_networksdeleted(self, db):
+    def test_project_delete_success_networksdeleted(self):
         api.project_create('anvil-nextgen')
         network_create_simple('hammernet', 'anvil-nextgen')
         api.network_delete('hammernet')
         api.project_delete('anvil-nextgen')
 
-    @database_only
-    def test_project_delete_hasheadnode(self, db):
+    def test_project_delete_hasheadnode(self):
         api.project_create('anvil-nextgen')
         api.headnode_create('hn-01', 'anvil-nextgen', 'base-headnode')
         with pytest.raises(api.BlockedError):
             api.project_delete('anvil-nextgen')
 
-class TestProjectAddDeleteUser:
+class TestProjectAddDeleteUser(DBOnlyTest):
     """Tests for adding and deleting a user from a project"""
 
-    @database_only
-    def test_project_add_user(self, db):
+    def test_project_add_user(self):
         api.user_create('alice', 'secret')
         api.project_create('acme-corp')
         api.project_add_user('acme-corp', 'alice')
-        user = api._must_find(db, model.User, 'alice')
-        project = api._must_find(db, model.Project, 'acme-corp')
+        user = api._must_find(self.db, model.User, 'alice')
+        project = api._must_find(self.db, model.Project, 'acme-corp')
         assert project in user.projects
         assert user in project.users
 
-    @database_only
-    def test_project_remove_user(self, db):
+    def test_project_remove_user(self):
         api.user_create('alice', 'secret')
         api.project_create('acme-corp')
         api.project_add_user('acme-corp', 'alice')
         api.project_remove_user('acme-corp', 'alice')
-        user = api._must_find(db, model.User, 'alice')
-        project = api._must_find(db, model.Project, 'acme-corp')
+        user = api._must_find(self.db, model.User, 'alice')
+        project = api._must_find(self.db, model.Project, 'acme-corp')
         assert project not in user.projects
         assert user not in project.users
 
-    @database_only
-    def test_project_delete(self, db):
+    def test_project_delete(self):
         api.project_create('acme-corp')
         api.project_delete('acme-corp')
         with pytest.raises(api.NotFoundError):
-            api._must_find(db, model.Project, 'acme-corp')
+            api._must_find(self.db, model.Project, 'acme-corp')
 
-    @database_only
-    def test_duplicate_project_create(self, db):
+    def test_duplicate_project_create(self):
         api.project_create('acme-corp')
         with pytest.raises(api.DuplicateError):
             api.project_create('acme-corp')
 
-    @database_only
-    def test_duplicate_project_add_user(self, db):
+    def test_duplicate_project_add_user(self):
         api.user_create('alice', 'secret')
         api.project_create('acme-corp')
         api.project_add_user('acme-corp', 'alice')
         with pytest.raises(api.DuplicateError):
             api.project_add_user('acme-corp', 'alice')
 
-    @database_only
-    def test_bad_project_remove_user(self, db):
+    def test_bad_project_remove_user(self):
         """Tests that removing a user from a project they're not in fails."""
         api.user_create('alice', 'secret')
         api.project_create('acme-corp')
@@ -169,10 +149,9 @@ class TestProjectAddDeleteUser:
             api.project_remove_user('acme-corp', 'alice')
 
 
-class TestNetworking:
+class TestNetworking(DBOnlyTest):
 
-    @database_only
-    def test_networking_involved(self, db):
+    def test_networking_involved(self):
         api.port_register('1')
         api.port_register('2')
         api.port_register('3')
@@ -193,8 +172,7 @@ class TestNetworking:
         network_create_simple('spiderwebs', 'anvil-nextgen')
         api.node_connect_network('node-98', 'eth0', 'hammernet')
 
-    @database_only
-    def test_networking_nic_no_port(self, db):
+    def test_networking_nic_no_port(self):
         api.node_register('node-99', 'ipmihost', 'root', 'tapeworm')
         api.node_register_nic('node-99', 'eth0', 'DE:AD:BE:EF:20:14')
 
@@ -205,67 +183,59 @@ class TestNetworking:
         api.node_connect_network('node-99', 'eth0', 'hammernet')
 
 
-class TestProjectConnectDetachNode:
+class TestProjectConnectDetachNode(DBOnlyTest):
 
-    @database_only
-    def test_project_connect_node(self, db):
+    def test_project_connect_node(self):
         api.project_create('anvil-nextgen')
         api.node_register('node-99', 'ipmihost', 'root', 'tapeworm')
         api.project_connect_node('anvil-nextgen', 'node-99')
-        project = api._must_find(db, model.Project, 'anvil-nextgen')
-        node = api._must_find(db, model.Node, 'node-99')
+        project = api._must_find(self.db, model.Project, 'anvil-nextgen')
+        node = api._must_find(self.db, model.Node, 'node-99')
         assert node in project.nodes
         assert node.project is project
 
-    @database_only
-    def test_project_connect_node_project_nexist(self, db):
+    def test_project_connect_node_project_nexist(self):
         """Tests that connecting a node to a nonexistent project fails"""
         api.node_register('node-99', 'ipmihost', 'root', 'tapeworm')
         with pytest.raises(api.NotFoundError):
             api.project_connect_node('anvil-nextgen', 'node-99')
 
-    @database_only
-    def test_project_connect_node_node_nexist(self, db):
+    def test_project_connect_node_node_nexist(self):
         """Tests that connecting a nonexistent node to a projcet fails"""
         api.project_create('anvil-nextgen')
         with pytest.raises(api.NotFoundError):
             api.project_connect_node('anvil-nextgen', 'node-99')
 
-    @database_only
-    def test_project_detach_node(self, db):
+    def test_project_detach_node(self):
         api.project_create('anvil-nextgen')
         api.node_register('node-99', 'ipmihost', 'root', 'tapeworm')
         api.project_connect_node('anvil-nextgen', 'node-99')
         api.project_detach_node('anvil-nextgen', 'node-99')
-        project = api._must_find(db, model.Project, 'anvil-nextgen')
-        node = api._must_find(db, model.Node, 'node-99')
+        project = api._must_find(self.db, model.Project, 'anvil-nextgen')
+        node = api._must_find(self.db, model.Node, 'node-99')
         assert node not in project.nodes
         assert node.project is not project
 
-    @database_only
-    def test_project_detach_node_notattached(self, db):
+    def test_project_detach_node_notattached(self):
         """Tests that removing a node from a project it's not in fails."""
         api.project_create('anvil-nextgen')
         api.node_register('node-99', 'ipmihost', 'root', 'tapeworm')
         with pytest.raises(api.NotFoundError):
             api.project_detach_node('anvil-nextgen', 'node-99')
 
-    @database_only
-    def test_project_detach_node_project_nexist(self, db):
+    def test_project_detach_node_project_nexist(self):
         """Tests that removing a node from a nonexistent project fails."""
         api.node_register('node-99', 'ipmihost', 'root', 'tapeworm')
         with pytest.raises(api.NotFoundError):
             api.project_detach_node('anvil-nextgen', 'node-99')
 
-    @database_only
-    def test_project_detach_node_node_nexist(self, db):
+    def test_project_detach_node_node_nexist(self):
         """Tests that removing a nonexistent node from a project fails."""
         api.project_create('anvil-nextgen')
         with pytest.raises(api.NotFoundError):
             api.project_detach_node('anvil-nextgen', 'node-99')
 
-    @database_only
-    def test_project_detach_node_on_network(self, db):
+    def test_project_detach_node_on_network(self):
         api.project_create('anvil-nextgen')
         api.node_register('node-99', 'ipmihost', 'root', 'tapeworm')
         api.node_register_nic('node-99', 'eth0', 'DE:AD:BE:EF:20:13')
@@ -275,8 +245,7 @@ class TestProjectConnectDetachNode:
         with pytest.raises(api.BlockedError):
             api.project_detach_node('anvil-nextgen', 'node-99')
 
-    @database_only
-    def test_project_detach_node_success_nic_not_on_network(self, db):
+    def test_project_detach_node_success_nic_not_on_network(self):
         api.project_create('anvil-nextgen')
         api.node_register('node-99', 'ipmihost', 'root', 'tapeworm')
         api.node_register_nic('node-99', 'eth0', 'DE:AD:BE:EF:20:13')
@@ -284,8 +253,7 @@ class TestProjectConnectDetachNode:
         network_create_simple('hammernet', 'anvil-nextgen')
         api.project_detach_node('anvil-nextgen', 'node-99')
 
-    @database_only
-    def test_project_detach_node_removed_from_network(self, db):
+    def test_project_detach_node_removed_from_network(self):
         api.project_create('anvil-nextgen')
         api.node_register('node-99', 'ipmihost', 'root', 'tapeworm')
         api.node_register_nic('node-99', 'eth0', 'DE:AD:BE:EF:20:13')
@@ -299,101 +267,87 @@ class TestProjectConnectDetachNode:
         api.project_detach_node('anvil-nextgen', 'node-99')
 
 
-class TestNodeRegisterDelete:
+class TestNodeRegisterDelete(DBOnlyTest):
     """Tests for the haas.api.node_* functions."""
 
-    @database_only
-    def test_node_register(self, db):
+    def test_node_register(self):
         api.node_register('node-99', 'ipmihost', 'root', 'tapeworm')
-        api._must_find(db, model.Node, 'node-99')
+        api._must_find(self.db, model.Node, 'node-99')
 
-    @database_only
-    def test_duplicate_node_register(self, db):
+    def test_duplicate_node_register(self):
         api.node_register('node-99', 'ipmihost', 'root', 'tapeworm')
         with pytest.raises(api.DuplicateError):
             api.node_register('node-99', 'ipmihost', 'root', 'tapeworm')
 
-    @database_only
-    def test_node_delete(self, db):
+    def test_node_delete(self):
         api.node_register('node-99', 'ipmihost', 'root', 'tapeworm')
         api.node_delete('node-99')
         with pytest.raises(api.NotFoundError):
-            api._must_find(db, model.Node, 'node-99')
+            api._must_find(self.db, model.Node, 'node-99')
 
-    @database_only
-    def test_node_delete_nexist(self, db):
+    def test_node_delete_nexist(self):
         with pytest.raises(api.NotFoundError):
             api.node_delete('node-99')
 
 
-class TestNodeRegisterDeleteNic:
+class TestNodeRegisterDeleteNic(DBOnlyTest):
 
-    @database_only
-    def test_node_register_nic(self, db):
+    def test_node_register_nic(self):
         api.node_register('compute-01', 'ipmihost', 'root', 'tapeworm')
         api.node_register_nic('compute-01', '01-eth0', 'DE:AD:BE:EF:20:14')
-        nic = api._must_find(db, model.Nic, '01-eth0')
+        nic = api._must_find(self.db, model.Nic, '01-eth0')
         assert nic.owner.label == 'compute-01'
 
-    @database_only
-    def test_node_register_nic_no_node(self, db):
+    def test_node_register_nic_no_node(self):
         with pytest.raises(api.NotFoundError):
             api.node_register_nic('compute-01', '01-eth0', 'DE:AD:BE:EF:20:14')
 
-    @database_only
-    def test_node_register_nic_duplicate_nic(self, db):
+    def test_node_register_nic_duplicate_nic(self):
         api.node_register('compute-01', 'ipmihost', 'root', 'tapeworm')
         api.node_register_nic('compute-01', '01-eth0', 'DE:AD:BE:EF:20:14')
-        nic = api._must_find(db, model.Nic, '01-eth0')
+        nic = api._must_find(self.db, model.Nic, '01-eth0')
         with pytest.raises(api.DuplicateError):
             api.node_register_nic('compute-01', '01-eth0', 'DE:AD:BE:EF:20:15')
 
-    @database_only
-    def test_node_delete_nic_success(self, db):
+    def test_node_delete_nic_success(self):
         api.node_register('compute-01', 'ipmihost', 'root', 'tapeworm')
         api.node_register_nic('compute-01', '01-eth0', 'DE:AD:BE:EF:20:14')
         api.node_delete_nic('compute-01', '01-eth0')
-        api._assert_absent(db, model.Nic, '01-eth0')
-        api._must_find(db, model.Node, 'compute-01')
+        api._assert_absent(self.db, model.Nic, '01-eth0')
+        api._must_find(self.db, model.Node, 'compute-01')
 
-    @database_only
-    def test_node_delete_nic_nic_nexist(self, db):
+    def test_node_delete_nic_nic_nexist(self):
         api.node_register('compute-01', 'ipmihost', 'root', 'tapeworm')
         with pytest.raises(api.NotFoundError):
             api.node_delete_nic('compute-01', '01-eth0')
 
-    @database_only
-    def test_node_delete_nic_node_nexist(self, db):
+    def test_node_delete_nic_node_nexist(self):
         with pytest.raises(api.NotFoundError):
             api.node_delete_nic('compute-01', '01-eth0')
 
-    @database_only
-    def test_node_delete_nic_wrong_node(self, db):
+    def test_node_delete_nic_wrong_node(self):
         api.node_register('compute-01', 'ipmihost', 'root', 'tapeworm')
         api.node_register('compute-02', 'ipmihost', 'root', 'tapeworm')
         api.node_register_nic('compute-01', '01-eth0', 'DE:AD:BE:EF:20:14')
         with pytest.raises(api.NotFoundError):
             api.node_delete_nic('compute-02', '01-eth0')
 
-    @database_only
-    def test_node_delete_nic_wrong_nexist_node(self, db):
+    def test_node_delete_nic_wrong_nexist_node(self):
         api.node_register('compute-01', 'ipmihost', 'root', 'tapeworm')
         api.node_register_nic('compute-01', '01-eth0', 'DE:AD:BE:EF:20:14')
         with pytest.raises(api.NotFoundError):
             api.node_delete_nic('compute-02', '01-eth0')
 
-    @database_only
-    def test_node_register_nic_diff_nodes(self, db):
+    def test_node_register_nic_diff_nodes(self):
         api.node_register('compute-01', 'ipmihost', 'root', 'tapeworm')
         api.node_register('compute-02', 'ipmihost', 'root', 'tapeworm')
         api.node_register_nic('compute-01', 'ipmi', 'DE:AD:BE:EF:20:14')
         api.node_register_nic('compute-02', 'ipmi', 'DE:AD:BE:EF:20:14')
 
 
-class TestNodeConnectDetachNetwork:
+class TestNodeConnectDetachNetwork(DBOnlyTest):
 
-    @database_only
-    def test_node_connect_network_success(self, db):
+    def test_node_connect_network_success(self):
         api.node_register('node-99', 'ipmihost', 'root', 'tapeworm')
         api.node_register_nic('node-99', '99-eth0', 'DE:AD:BE:EF:20:14')
         api.project_create('anvil-nextgen')
@@ -402,13 +356,12 @@ class TestNodeConnectDetachNetwork:
 
         api.node_connect_network('node-99', '99-eth0', 'hammernet')
         deferred.apply_networking()
-        network = api._must_find(db, model.Network, 'hammernet')
-        nic = api._must_find(db, model.Nic, '99-eth0')
+        network = api._must_find(self.db, model.Network, 'hammernet')
+        nic = api._must_find(self.db, model.Nic, '99-eth0')
         assert nic.network is network
         assert nic in network.nics
 
-    @database_only
-    def test_node_connect_network_wrong_node_in_project(self, db):
+    def test_node_connect_network_wrong_node_in_project(self):
         api.node_register('node-99', 'ipmihost', 'root', 'tapeworm')
         api.node_register_nic('node-99', '99-eth0', 'DE:AD:BE:EF:20:14')
         api.project_create('anvil-nextgen')
@@ -421,8 +374,7 @@ class TestNodeConnectDetachNetwork:
         with pytest.raises(api.NotFoundError):
             api.node_connect_network('node-98', '99-eth0', 'hammernet')
 
-    @database_only
-    def test_node_connect_network_wrong_node_not_in_project(self, db):
+    def test_node_connect_network_wrong_node_not_in_project(self):
         api.node_register('node-99', 'ipmihost', 'root', 'tapeworm')
         api.node_register_nic('node-99', '99-eth0', 'DE:AD:BE:EF:20:14')
         api.project_create('anvil-nextgen')
@@ -433,8 +385,7 @@ class TestNodeConnectDetachNetwork:
         with pytest.raises(api.NotFoundError):
             api.node_connect_network('node-98', '99-eth0', 'hammernet')
 
-    @database_only
-    def test_node_connect_network_no_such_node(self, db):
+    def test_node_connect_network_no_such_node(self):
         api.node_register('node-99', 'ipmihost', 'root', 'tapeworm')
         api.node_register_nic('node-99', '99-eth0', 'DE:AD:BE:EF:20:14')
         api.project_create('anvil-nextgen')
@@ -444,8 +395,7 @@ class TestNodeConnectDetachNetwork:
         with pytest.raises(api.NotFoundError):
             api.node_connect_network('node-98', '99-eth0', 'hammernet') # changed
 
-    @database_only
-    def test_node_connect_network_no_such_nic(self, db):
+    def test_node_connect_network_no_such_nic(self):
         api.node_register('node-99', 'ipmihost', 'root', 'tapeworm')
 #        api.node_register_nic('node-99', '99-eth0', 'DE:AD:BE:EF:20:14')
         api.project_create('anvil-nextgen')
@@ -455,8 +405,7 @@ class TestNodeConnectDetachNetwork:
         with pytest.raises(api.NotFoundError):
             api.node_connect_network('node-99', '99-eth0', 'hammernet')
 
-    @database_only
-    def test_node_connect_network_no_such_network(self, db):
+    def test_node_connect_network_no_such_network(self):
         api.node_register('node-99', 'ipmihost', 'root', 'tapeworm')
         api.node_register_nic('node-99', '99-eth0', 'DE:AD:BE:EF:20:14')
         api.project_create('anvil-nextgen')
@@ -465,8 +414,7 @@ class TestNodeConnectDetachNetwork:
         with pytest.raises(api.NotFoundError):
             api.node_connect_network('node-99', '99-eth0', 'hammernet')
 
-    @database_only
-    def test_node_connect_network_node_not_in_project(self, db):
+    def test_node_connect_network_node_not_in_project(self):
         api.node_register('node-99', 'ipmihost', 'root', 'tapeworm')
         api.node_register_nic('node-99', '99-eth0', 'DE:AD:BE:EF:20:14')
         api.project_create('anvil-nextgen')
@@ -476,8 +424,7 @@ class TestNodeConnectDetachNetwork:
         with pytest.raises(api.ProjectMismatchError):
             api.node_connect_network('node-99', '99-eth0', 'hammernet')
 
-    @database_only
-    def test_node_connect_network_different_projects(self, db):
+    def test_node_connect_network_different_projects(self):
         api.node_register('node-99', 'ipmihost', 'root', 'tapeworm')
         api.node_register_nic('node-99', '99-eth0', 'DE:AD:BE:EF:20:14')
         api.project_create('anvil-nextgen')
@@ -488,8 +435,7 @@ class TestNodeConnectDetachNetwork:
         with pytest.raises(api.ProjectMismatchError):
             api.node_connect_network('node-99', '99-eth0', 'hammernet')
 
-    @database_only
-    def test_node_connect_network_already_attached_to_same(self, db):
+    def test_node_connect_network_already_attached_to_same(self):
         api.node_register('node-99', 'ipmihost', 'root', 'tapeworm')
         api.node_register_nic('node-99', '99-eth0', 'DE:AD:BE:EF:20:14')
         api.project_create('anvil-nextgen')
@@ -500,8 +446,7 @@ class TestNodeConnectDetachNetwork:
 
         api.node_connect_network('node-99', '99-eth0', 'hammernet')
 
-    @database_only
-    def test_node_connect_network_already_attached_differently(self, db):
+    def test_node_connect_network_already_attached_differently(self):
         api.node_register('node-99', 'ipmihost', 'root', 'tapeworm')
         api.node_register_nic('node-99', '99-eth0', 'DE:AD:BE:EF:20:14')
         api.project_create('anvil-nextgen')
@@ -514,8 +459,7 @@ class TestNodeConnectDetachNetwork:
         api.node_connect_network('node-99', '99-eth0', 'hammernet2')
 
 
-    @database_only
-    def test_node_detach_network_success(self, db):
+    def test_node_detach_network_success(self):
         api.node_register('node-99', 'ipmihost', 'root', 'tapeworm')
         api.node_register_nic('node-99', '99-eth0', 'DE:AD:BE:EF:20:14')
         api.project_create('anvil-nextgen')
@@ -526,13 +470,12 @@ class TestNodeConnectDetachNetwork:
 
         api.node_detach_network('node-99', '99-eth0')
         deferred.apply_networking()
-        network = api._must_find(db, model.Network, 'hammernet')
-        nic = api._must_find(db, model.Nic, '99-eth0')
+        network = api._must_find(self.db, model.Network, 'hammernet')
+        nic = api._must_find(self.db, model.Nic, '99-eth0')
         assert nic.network is not network
         assert nic not in network.nics
 
-    @database_only
-    def test_node_detach_network_not_attached(self, db):
+    def test_node_detach_network_not_attached(self):
         api.node_register('node-99', 'ipmihost', 'root', 'tapeworm')
         api.node_register_nic('node-99', '99-eth0', 'DE:AD:BE:EF:20:14')
         api.project_create('anvil-nextgen')
@@ -542,8 +485,7 @@ class TestNodeConnectDetachNetwork:
 
         api.node_detach_network('node-99', '99-eth0')
 
-    @database_only
-    def test_node_detach_network_wrong_node_in_project(self, db):
+    def test_node_detach_network_wrong_node_in_project(self):
         api.node_register('node-99', 'ipmihost', 'root', 'tapeworm')
         api.node_register('node-98', 'ipmihost', 'root', 'tapeworm') # added
         api.node_register_nic('node-99', '99-eth0', 'DE:AD:BE:EF:20:14')
@@ -556,8 +498,7 @@ class TestNodeConnectDetachNetwork:
         with pytest.raises(api.NotFoundError):
             api.node_detach_network('node-98', '99-eth0') # changed
 
-    @database_only
-    def test_node_detach_network_wrong_node_not_in_project(self, db):
+    def test_node_detach_network_wrong_node_not_in_project(self):
         api.node_register('node-99', 'ipmihost', 'root', 'tapeworm')
         api.node_register('node-98', 'ipmihost', 'root', 'tapeworm') # added
         api.node_register_nic('node-99', '99-eth0', 'DE:AD:BE:EF:20:14')
@@ -569,8 +510,7 @@ class TestNodeConnectDetachNetwork:
         with pytest.raises(api.NotFoundError):
             api.node_detach_network('node-98', '99-eth0') # changed
 
-    @database_only
-    def test_node_detach_network_no_such_node(self, db):
+    def test_node_detach_network_no_such_node(self):
         api.node_register('node-99', 'ipmihost', 'root', 'tapeworm')
         api.node_register_nic('node-99', '99-eth0', 'DE:AD:BE:EF:20:14')
         api.project_create('anvil-nextgen')
@@ -581,8 +521,7 @@ class TestNodeConnectDetachNetwork:
         with pytest.raises(api.NotFoundError):
             api.node_detach_network('node-98', '99-eth0') # changed
 
-    @database_only
-    def test_node_detach_network_no_such_nic(self, db):
+    def test_node_detach_network_no_such_nic(self):
         api.node_register('node-99', 'ipmihost', 'root', 'tapeworm')
         api.node_register_nic('node-99', '99-eth0', 'DE:AD:BE:EF:20:14')
         api.project_create('anvil-nextgen')
@@ -593,8 +532,7 @@ class TestNodeConnectDetachNetwork:
         with pytest.raises(api.NotFoundError):
             api.node_detach_network('node-99', '99-eth1') # changed
 
-    @database_only
-    def test_node_detach_network_node_not_in_project(self, db):
+    def test_node_detach_network_node_not_in_project(self):
         api.node_register('node-99', 'ipmihost', 'root', 'tapeworm')
         api.node_register_nic('node-99', '99-eth0', 'DE:AD:BE:EF:20:14')
         api.project_create('anvil-nextgen')
@@ -606,23 +544,20 @@ class TestNodeConnectDetachNetwork:
             api.node_detach_network('node-99', '99-eth0')
 
 
-class TestHeadnodeCreateDelete:
+class TestHeadnodeCreateDelete(DBOnlyTest):
 
-    @database_only
-    def test_headnode_create_success(self, db):
+    def test_headnode_create_success(self):
         api.project_create('anvil-nextgen')
         api.headnode_create('hn-0', 'anvil-nextgen', 'base-headnode')
-        hn = api._must_find(db, model.Headnode, 'hn-0')
+        hn = api._must_find(self.db, model.Headnode, 'hn-0')
         assert hn.project.label == 'anvil-nextgen'
 
-    @database_only
-    def test_headnode_create_badproject(self, db):
+    def test_headnode_create_badproject(self):
         """Tests that creating a headnode with a nonexistent project fails"""
         with pytest.raises(api.NotFoundError):
             api.headnode_create('hn-0', 'anvil-nextgen', 'base-headnode')
 
-    @database_only
-    def test_headnode_create_duplicate(self, db):
+    def test_headnode_create_duplicate(self):
         """Tests that creating a headnode with a duplicate name fails"""
         api.project_create('anvil-nextgen')
         api.project_create('anvil-oldtimer')
@@ -630,74 +565,64 @@ class TestHeadnodeCreateDelete:
         with pytest.raises(api.DuplicateError):
             api.headnode_create('hn-0', 'anvil-oldtimer', 'base-headnode')
 
-    @database_only
-    def test_headnode_create_second(self, db):
+    def test_headnode_create_second(self):
         """Tests that creating a second headnode one one project fails"""
         api.project_create('anvil-nextgen')
         api.headnode_create('hn-0', 'anvil-nextgen', 'base-headnode')
         api.headnode_create('hn-1', 'anvil-nextgen', 'base-headnode')
 
 
-    @database_only
-    def test_headnode_delete_success(self, db):
+    def test_headnode_delete_success(self):
         api.project_create('anvil-nextgen')
         api.headnode_create('hn-0', 'anvil-nextgen', 'base-headnode')
         api.headnode_delete('hn-0')
-        api._assert_absent(db, model.Headnode, 'hn-0')
+        api._assert_absent(self.db, model.Headnode, 'hn-0')
 
-    @database_only
-    def test_headnode_delete_nonexistent(self, db):
+    def test_headnode_delete_nonexistent(self):
         """Tests that deleting a nonexistent headnode fails"""
         with pytest.raises(api.NotFoundError):
             api.headnode_delete('hn-0')
 
 
-class TestHeadnodeCreateDeleteHnic:
+class TestHeadnodeCreateDeleteHnic(DBOnlyTest):
 
-    @database_only
-    def test_headnode_create_hnic_success(self, db):
+    def test_headnode_create_hnic_success(self):
         api.project_create('anvil-nextgen')
         api.headnode_create('hn-0', 'anvil-nextgen', 'base-headnode')
         api.headnode_create_hnic('hn-0', 'hn-0-eth0')
-        nic = api._must_find(db, model.Hnic, 'hn-0-eth0')
+        nic = api._must_find(self.db, model.Hnic, 'hn-0-eth0')
         assert nic.owner.label == 'hn-0'
 
-    @database_only
-    def test_headnode_create_hnic_no_headnode(self, db):
+    def test_headnode_create_hnic_no_headnode(self):
         with pytest.raises(api.NotFoundError):
             api.headnode_create_hnic('hn-0', 'hn-0-eth0')
 
-    @database_only
-    def test_headnode_create_hnic_duplicate_hnic(self, db):
+    def test_headnode_create_hnic_duplicate_hnic(self):
         api.project_create('anvil-nextgen')
         api.headnode_create('hn-0', 'anvil-nextgen', 'base-headnode')
         api.headnode_create_hnic('hn-0', 'hn-0-eth0')
         with pytest.raises(api.DuplicateError):
             api.headnode_create_hnic('hn-0', 'hn-0-eth0')
 
-    @database_only
-    def test_headnode_delete_hnic_success(self, db):
+    def test_headnode_delete_hnic_success(self):
         api.project_create('anvil-nextgen')
         api.headnode_create('hn-0', 'anvil-nextgen', 'base-headnode')
         api.headnode_create_hnic('hn-0', 'hn-0-eth0')
         api.headnode_delete_hnic('hn-0', 'hn-0-eth0')
-        api._assert_absent(db, model.Hnic, 'hn-0-eth0')
-        hn = api._must_find(db, model.Headnode, 'hn-0')
+        api._assert_absent(self.db, model.Hnic, 'hn-0-eth0')
+        hn = api._must_find(self.db, model.Headnode, 'hn-0')
 
-    @database_only
-    def test_headnode_delete_hnic_hnic_nexist(self, db):
+    def test_headnode_delete_hnic_hnic_nexist(self):
         api.project_create('anvil-nextgen')
         api.headnode_create('hn-0', 'anvil-nextgen', 'base-headnode')
         with pytest.raises(api.NotFoundError):
             api.headnode_delete_hnic('hn-0', 'hn-0-eth0')
 
-    @database_only
-    def test_headnode_delete_hnic_headnode_nexist(self, db):
+    def test_headnode_delete_hnic_headnode_nexist(self):
         with pytest.raises(api.NotFoundError):
             api.headnode_delete_hnic('hn-0', 'hn-0-eth0')
 
-    @database_only
-    def test_headnode_delete_hnic_wrong_headnode(self, db):
+    def test_headnode_delete_hnic_wrong_headnode(self):
         api.project_create('anvil-nextgen')
         api.project_create('anvil-oldtimer')
         api.headnode_create('hn-0', 'anvil-nextgen', 'base-headnode')
@@ -706,16 +631,14 @@ class TestHeadnodeCreateDeleteHnic:
         with pytest.raises(api.NotFoundError):
             api.headnode_delete_hnic('hn-1', 'hn-0-eth0')
 
-    @database_only
-    def test_headnode_delete_hnic_wrong_nexist_headnode(self, db):
+    def test_headnode_delete_hnic_wrong_nexist_headnode(self):
         api.project_create('anvil-nextgen')
         api.headnode_create('hn-0', 'anvil-nextgen', 'base-headnode')
         api.headnode_create_hnic('hn-0', 'hn-0-eth0')
         with pytest.raises(api.NotFoundError):
             api.headnode_delete_hnic('hn-1', 'hn-0-eth0')
 
-    @database_only
-    def test_headnode_create_hnic_diff_headnodes(self, db):
+    def test_headnode_create_hnic_diff_headnodes(self):
         api.project_create('anvil-legacy')
         api.project_create('anvil-nextgen')
         api.headnode_create('hn-0', 'anvil-legacy', 'base-headnode')
@@ -724,23 +647,21 @@ class TestHeadnodeCreateDeleteHnic:
         api.headnode_create_hnic('hn-1', 'eth0')
 
 
-class TestHeadnodeConnectDetachNetwork:
+class TestHeadnodeConnectDetachNetwork(DBOnlyTest):
 
-    @database_only
-    def test_headnode_connect_network_success(self, db):
+    def test_headnode_connect_network_success(self):
         api.project_create('anvil-nextgen')
         api.headnode_create('hn-0', 'anvil-nextgen', 'base-headnode')
         api.headnode_create_hnic('hn-0', 'hn-0-eth0')
         network_create_simple('hammernet', 'anvil-nextgen')
 
         api.headnode_connect_network('hn-0', 'hn-0-eth0', 'hammernet')
-        network = api._must_find(db, model.Network, 'hammernet')
-        hnic = api._must_find(db, model.Hnic, 'hn-0-eth0')
+        network = api._must_find(self.db, model.Network, 'hammernet')
+        hnic = api._must_find(self.db, model.Hnic, 'hn-0-eth0')
         assert hnic.network is network
         assert hnic in network.hnics
 
-    @database_only
-    def test_headnode_connect_network_no_such_headnode(self, db):
+    def test_headnode_connect_network_no_such_headnode(self):
         api.project_create('anvil-nextgen')
         api.headnode_create('hn-0', 'anvil-nextgen', 'base-headnode')
         api.headnode_create_hnic('hn-0', 'hn-0-eth0')
@@ -749,8 +670,7 @@ class TestHeadnodeConnectDetachNetwork:
         with pytest.raises(api.NotFoundError):
             api.headnode_connect_network('hn-1', 'hn-0-eth0', 'hammernet') # changed
 
-    @database_only
-    def test_headnode_connect_network_no_such_hnic(self, db):
+    def test_headnode_connect_network_no_such_hnic(self):
         api.project_create('anvil-nextgen')
         api.headnode_create('hn-0', 'anvil-nextgen', 'base-headnode')
         api.headnode_create_hnic('hn-0', 'hn-0-eth0')
@@ -759,8 +679,7 @@ class TestHeadnodeConnectDetachNetwork:
         with pytest.raises(api.NotFoundError):
             api.headnode_connect_network('hn-0', 'hn-0-eth1', 'hammernet') # changed
 
-    @database_only
-    def test_headnode_connect_network_no_such_network(self, db):
+    def test_headnode_connect_network_no_such_network(self):
         api.project_create('anvil-nextgen')
         api.headnode_create('hn-0', 'anvil-nextgen', 'base-headnode')
         api.headnode_create_hnic('hn-0', 'hn-0-eth0')
@@ -769,8 +688,7 @@ class TestHeadnodeConnectDetachNetwork:
         with pytest.raises(api.NotFoundError):
             api.headnode_connect_network('hn-0', 'hn-0-eth0', 'hammernet2') # changed
 
-    @database_only
-    def test_headnode_connect_network_already_attached_to_same(self, db):
+    def test_headnode_connect_network_already_attached_to_same(self):
         api.project_create('anvil-nextgen')
         api.headnode_create('hn-0', 'anvil-nextgen', 'base-headnode')
         api.headnode_create_hnic('hn-0', 'hn-0-eth0')
@@ -779,8 +697,7 @@ class TestHeadnodeConnectDetachNetwork:
 
         api.headnode_connect_network('hn-0', 'hn-0-eth0', 'hammernet')
 
-    @database_only
-    def test_headnode_connect_network_already_attached_differently(self, db):
+    def test_headnode_connect_network_already_attached_differently(self):
         api.project_create('anvil-nextgen')
         api.headnode_create('hn-0', 'anvil-nextgen', 'base-headnode')
         api.headnode_create_hnic('hn-0', 'hn-0-eth0')
@@ -790,8 +707,7 @@ class TestHeadnodeConnectDetachNetwork:
 
         api.headnode_connect_network('hn-0', 'hn-0-eth0', 'hammernet2') # changed
 
-    @database_only
-    def test_headnode_connect_network_different_projects(self, db):
+    def test_headnode_connect_network_different_projects(self):
         api.project_create('anvil-nextgen')
         api.project_create('anvil-oldtimer') # added
         api.headnode_create('hn-0', 'anvil-nextgen', 'base-headnode')
@@ -801,8 +717,7 @@ class TestHeadnodeConnectDetachNetwork:
         with pytest.raises(api.ProjectMismatchError):
             api.headnode_connect_network('hn-0', 'hn-0-eth0', 'hammernet')
 
-    @database_only
-    def test_headnode_connect_network_non_allocated(self, db):
+    def test_headnode_connect_network_non_allocated(self):
         """Connecting a headnode to a non-allocated network should fail.
 
         Right now the create_bridges script will only create bridges
@@ -828,8 +743,7 @@ class TestHeadnodeConnectDetachNetwork:
             api.headnode_connect_network('hn-0', 'hn-0-eth0', 'hammernet')
 
 
-    @database_only
-    def test_headnode_detach_network_success(self, db):
+    def test_headnode_detach_network_success(self):
         api.project_create('anvil-nextgen')
         api.headnode_create('hn-0', 'anvil-nextgen', 'base-headnode')
         api.headnode_create_hnic('hn-0', 'hn-0-eth0')
@@ -837,13 +751,12 @@ class TestHeadnodeConnectDetachNetwork:
         api.headnode_connect_network('hn-0', 'hn-0-eth0', 'hammernet')
 
         api.headnode_detach_network('hn-0', 'hn-0-eth0')
-        network = api._must_find(db, model.Network, 'hammernet')
-        hnic = api._must_find(db, model.Hnic, 'hn-0-eth0')
+        network = api._must_find(self.db, model.Network, 'hammernet')
+        hnic = api._must_find(self.db, model.Hnic, 'hn-0-eth0')
         assert hnic.network is None
         assert hnic not in network.hnics
 
-    @database_only
-    def test_headnode_detach_network_not_attached(self, db):
+    def test_headnode_detach_network_not_attached(self):
         api.project_create('anvil-nextgen')
         api.headnode_create('hn-0', 'anvil-nextgen', 'base-headnode')
         api.headnode_create_hnic('hn-0', 'hn-0-eth0')
@@ -852,8 +765,7 @@ class TestHeadnodeConnectDetachNetwork:
 
         api.headnode_detach_network('hn-0', 'hn-0-eth0')
 
-    @database_only
-    def test_headnode_detach_network_no_such_headnode(self, db):
+    def test_headnode_detach_network_no_such_headnode(self):
         api.project_create('anvil-nextgen')
         api.headnode_create('hn-0', 'anvil-nextgen', 'base-headnode')
         api.headnode_create_hnic('hn-0', 'hn-0-eth0')
@@ -863,8 +775,7 @@ class TestHeadnodeConnectDetachNetwork:
         with pytest.raises(api.NotFoundError):
             api.headnode_detach_network('hn-1', 'hn-0-eth0')  # changed
 
-    @database_only
-    def test_headnode_detach_network_no_such_hnic(self, db):
+    def test_headnode_detach_network_no_such_hnic(self):
         api.project_create('anvil-nextgen')
         api.headnode_create('hn-0', 'anvil-nextgen', 'base-headnode')
         api.headnode_create_hnic('hn-0', 'hn-0-eth0')
@@ -875,7 +786,7 @@ class TestHeadnodeConnectDetachNetwork:
             api.headnode_detach_network('hn-0', 'hn-0-eth1')  # changed
 
 
-class TestHeadnodeFreeze:
+class TestHeadnodeFreeze(DBOnlyTest):
 
     # We can't start the headnodes for real in the test suite, but we need
     # "starting" them to still clear the dirty bit.
@@ -905,80 +816,69 @@ class TestHeadnodeFreeze:
         self._prep_connect_network()
         api.headnode_connect_network('hn-0', 'hn-0-eth0', 'hammernet')
 
-    @database_only
-    def test_freeze_fail_create_hnic(self, db):
+    def test_freeze_fail_create_hnic(self):
         self._prep()
 
         api.headnode_start('hn-0')
         with pytest.raises(api.IllegalStateError):
             api.headnode_create_hnic('hn-0', 'hn-0-eth0')
 
-    @database_only
-    def test_succeed_create_hnic(self, db):
+    def test_succeed_create_hnic(self):
         self._prep()
 
         api.headnode_create_hnic('hn-0', 'hn-0-eth0')
 
-    @database_only
-    def test_freeze_fail_delete_hnic(self, db):
+    def test_freeze_fail_delete_hnic(self):
         self._prep_delete_hnic()
 
         api.headnode_start('hn-0')
         with pytest.raises(api.IllegalStateError):
             api.headnode_delete_hnic('hn-0', 'hn-0-eth0')
 
-    @database_only
-    def test_succeed_delete_hnic(self, db):
+    def test_succeed_delete_hnic(self):
         self._prep_delete_hnic()
 
         api.headnode_delete_hnic('hn-0', 'hn-0-eth0')
 
-    @database_only
-    def test_freeze_fail_connect_network(self, db):
+    def test_freeze_fail_connect_network(self):
         self._prep_connect_network()
 
         api.headnode_start('hn-0')
         with pytest.raises(api.IllegalStateError):
             api.headnode_connect_network('hn-0', 'hn-0-eth0', 'hammernet')
 
-    @database_only
-    def test_succeed_connect_network(self, db):
+    def test_succeed_connect_network(self):
         self._prep_connect_network()
 
         api.headnode_connect_network('hn-0', 'hn-0-eth0', 'hammernet')
 
-    @database_only
-    def test_freeze_fail_detach_network(self, db):
+    def test_freeze_fail_detach_network(self):
         self._prep_detach_network()
 
         api.headnode_start('hn-0')
         with pytest.raises(api.IllegalStateError):
             api.headnode_detach_network('hn-0', 'hn-0-eth0')
 
-    @database_only
-    def test_succeed_detach_network(self, db):
+    def test_succeed_detach_network(self):
         self._prep_detach_network()
 
         api.headnode_detach_network('hn-0', 'hn-0-eth0')
 
-class TestNetworkCreateDelete:
+class TestNetworkCreateDelete(DBOnlyTest):
     """Tests for the haas.api.network_* functions."""
 
-    @database_only
-    def test_network_create_success(self, db):
+    def test_network_create_success(self):
         api.project_create('anvil-nextgen')
         network_create_simple('hammernet', 'anvil-nextgen')
-        net = api._must_find(db, model.Network, 'hammernet')
+        net = api._must_find(self.db, model.Network, 'hammernet')
         assert net.creator.label == 'anvil-nextgen'
 
-    @database_only
-    def test_network_create_badproject(self, db):
+    def test_network_create_badproject(self):
         """Tests that creating a network with a nonexistent project fails"""
         with pytest.raises(api.NotFoundError):
             network_create_simple('hammernet', 'anvil-nextgen')
 
-    @database_only
-    def test_network_create_duplicate(self, db):
+    def test_network_create_duplicate(self):
         """Tests that creating a network with a duplicate name fails"""
         api.project_create('anvil-nextgen')
         api.project_create('anvil-oldtimer')
@@ -986,15 +886,13 @@ class TestNetworkCreateDelete:
         with pytest.raises(api.DuplicateError):
             network_create_simple('hammernet', 'anvil-oldtimer')
 
-    @database_only
-    def test_network_delete_success(self, db):
+    def test_network_delete_success(self):
         api.project_create('anvil-nextgen')
         network_create_simple('hammernet', 'anvil-nextgen')
         api.network_delete('hammernet')
-        api._assert_absent(db, model.Network, 'hammernet')
+        api._assert_absent(self.db, model.Network, 'hammernet')
 
-    @database_only
-    def test_network_delete_project_complex_success(self, db):
+    def test_network_delete_project_complex_success(self):
         api.project_create('anvil-nextgen')
         network_create_simple('hammernet', 'anvil-nextgen')
         api.node_register('node-99', 'ipmihost', 'root', 'tapeworm')
@@ -1006,14 +904,12 @@ class TestNetworkCreateDelete:
         deferred.apply_networking()
         api.network_delete('hammernet')
 
-    @database_only
-    def test_network_delete_nonexistent(self, db):
+    def test_network_delete_nonexistent(self):
         """Tests that deleting a nonexistent network fails"""
         with pytest.raises(api.NotFoundError):
             api.network_delete('hammernet')
 
-    @database_only
-    def test_network_delete_node_on_network(self, db):
+    def test_network_delete_node_on_network(self):
         api.project_create('anvil-nextgen')
         network_create_simple('hammernet', 'anvil-nextgen')
         api.node_register('node-99', 'ipmihost', 'root', 'tapeworm')
@@ -1023,8 +919,7 @@ class TestNetworkCreateDelete:
         with pytest.raises(api.BlockedError):
             api.network_delete('hammernet')
 
-    @database_only
-    def test_network_delete_headnode_on_network(self, db):
+    def test_network_delete_headnode_on_network(self):
         api.project_create('anvil-nextgen')
         network_create_simple('hammernet', 'anvil-nextgen')
         api.headnode_create('hn-0', 'anvil-nextgen', 'base-headnode')
@@ -1034,67 +929,57 @@ class TestNetworkCreateDelete:
             api.network_delete('hammernet')
 
 
-class TestPortRegisterDelete:
+class TestPortRegisterDelete(DBOnlyTest):
 
-    @database_only
-    def test_port_register_success(self, db):
+    def test_port_register_success(self):
         api.port_register('3')
 
-    @database_only
-    def test_port_register_duplicate(self, db):
+    def test_port_register_duplicate(self):
         api.port_register('3')
         with pytest.raises(api.DuplicateError):
             api.port_register('3')
 
-    @database_only
-    def test_port_delete_success(self, db):
+    def test_port_delete_success(self):
         api.port_register('3')
         api.port_delete('3')
 
-    @database_only
-    def test_port_delete_no_such_port(self, db):
+    def test_port_delete_no_such_port(self):
         with pytest.raises(api.NotFoundError):
             api.port_delete('3')
 
 
-class TestPortConnectDetachNic:
+class TestPortConnectDetachNic(DBOnlyTest):
 
-    @database_only
-    def test_port_connect_nic_success(self, db):
+    def test_port_connect_nic_success(self):
         api.port_register('3')
         api.node_register('compute-01', 'ipmihost', 'root', 'tapeworm')
         api.node_register_nic('compute-01', 'eth0', 'DE:AD:BE:EF:20:14')
         api.port_connect_nic('3', 'compute-01', 'eth0')
 
-    @database_only
-    def test_port_connect_nic_no_such_switch(self, db):
+    def test_port_connect_nic_no_such_switch(self):
         api.node_register('compute-01', 'ipmihost', 'root', 'tapeworm')
         api.node_register_nic('compute-01', 'eth0', 'DE:AD:BE:EF:20:14')
         with pytest.raises(api.NotFoundError):
             api.port_connect_nic('3', 'compute-01', 'eth0')
 
-    @database_only
-    def test_port_connect_nic_no_such_port(self, db):
+    def test_port_connect_nic_no_such_port(self):
         api.node_register('compute-01', 'ipmihost', 'root', 'tapeworm')
         api.node_register_nic('compute-01', 'eth0', 'DE:AD:BE:EF:20:14')
         with pytest.raises(api.NotFoundError):
             api.port_connect_nic('3', 'compute-01', 'eth0')
 
-    @database_only
-    def test_port_connect_nic_no_such_node(self, db):
+    def test_port_connect_nic_no_such_node(self):
         api.port_register('3')
         with pytest.raises(api.NotFoundError):
             api.port_connect_nic('3', 'compute-01', 'eth0')
 
-    @database_only
-    def test_port_connect_nic_no_such_nic(self, db):
+    def test_port_connect_nic_no_such_nic(self):
         api.port_register('3')
         api.node_register('compute-01', 'ipmihost', 'root', 'tapeworm')
         with pytest.raises(api.NotFoundError):
             api.port_connect_nic('3', 'compute-01', 'eth0')
 
-    @database_only
-    def test_port_connect_nic_already_attached_to_same(self, db):
+    def test_port_connect_nic_already_attached_to_same(self):
         api.port_register('3')
         api.node_register('compute-01', 'ipmihost', 'root', 'tapeworm')
         api.node_register_nic('compute-01', 'eth0', 'DE:AD:BE:EF:20:14')
@@ -1102,8 +987,7 @@ class TestPortConnectDetachNic:
         with pytest.raises(api.DuplicateError):
             api.port_connect_nic('3', 'compute-01', 'eth0')
 
-    @database_only
-    def test_port_connect_nic_nic_already_attached_differently(self, db):
+    def test_port_connect_nic_nic_already_attached_differently(self):
         api.port_register('3')
         api.port_register('4')
         api.node_register('compute-01', 'ipmihost', 'root', 'tapeworm')
@@ -1112,8 +996,7 @@ class TestPortConnectDetachNic:
         with pytest.raises(api.DuplicateError):
             api.port_connect_nic('4', 'compute-01', 'eth0')
 
-    @database_only
-    def test_port_connect_nic_port_already_attached_differently(self, db):
+    def test_port_connect_nic_port_already_attached_differently(self):
         api.port_register('3')
         api.node_register('compute-01', 'ipmihost', 'root', 'tapeworm')
         api.node_register('compute-02', 'ipmihost', 'root', 'tapeworm')
@@ -1124,21 +1007,18 @@ class TestPortConnectDetachNic:
             api.port_connect_nic('3', 'compute-02', 'eth1')
 
 
-    @database_only
-    def test_port_detach_nic_success(self, db):
+    def test_port_detach_nic_success(self):
         api.port_register('3')
         api.node_register('compute-01', 'ipmihost', 'root', 'tapeworm')
         api.node_register_nic('compute-01', 'eth0', 'DE:AD:BE:EF:20:14')
         api.port_connect_nic('3', 'compute-01', 'eth0')
         api.port_detach_nic('3')
 
-    @database_only
-    def test_port_detach_nic_no_such_port(self, db):
+    def test_port_detach_nic_no_such_port(self):
         with pytest.raises(api.NotFoundError):
             api.port_detach_nic('3')
 
-    @database_only
-    def test_port_detach_nic_not_attached(self, db):
+    def test_port_detach_nic_not_attached(self):
         api.port_register('3')
         api.node_register('compute-01', 'ipmihost', 'root', 'tapeworm')
         api.node_register_nic('compute-01', 'eth0', 'DE:AD:BE:EF:20:14')
@@ -1146,7 +1026,7 @@ class TestPortConnectDetachNic:
             api.port_detach_nic('3')
 
 
-class TestQuery:
+class TestQuery(DBOnlyTest):
     """test the query api"""
 
     def _compare_node_dumps(self, actual, expected):
@@ -1169,8 +1049,7 @@ class TestQuery:
         assert expected == actual
 
 
-    @database_only
-    def test_free_nodes(self, db):
+    def test_free_nodes(self):
         api.node_register('master-control-program', 'ipmihost', 'root', 'tapeworm')
         api.node_register('robocop', 'ipmihost', 'root', 'tapeworm')
         api.node_register('data', 'ipmihost', 'root', 'tapeworm')
@@ -1183,12 +1062,10 @@ class TestQuery:
             'robocop',
         ]
 
-    @database_only
-    def test_no_free_nodes(self, db):
+    def test_no_free_nodes(self):
         assert json.loads(api.list_free_nodes()) == []
 
-    @database_only
-    def test_some_non_free_nodes(self, db):
+    def test_some_non_free_nodes(self):
         """Make sure that allocated nodes don't show up in the free list."""
         api.node_register('master-control-program', 'ipmihost', 'root', 'tapeworm')
         api.node_register('robocop', 'ipmihost', 'root', 'tapeworm')
@@ -1200,8 +1077,7 @@ class TestQuery:
 
         assert json.loads(api.list_free_nodes()) == ['master-control-program']
 
-    @database_only
-    def test_show_node(self, db):
+    def test_show_node(self):
         api.node_register('robocop', 'ipmihost', 'root', 'tapeworm')
         api.node_register_nic('robocop', 'eth0', 'DE:AD:BE:EF:20:14')
         api.node_register_nic('robocop', 'wlan0', 'DE:AD:BE:EF:20:15')
@@ -1224,8 +1100,7 @@ class TestQuery:
         self._compare_node_dumps(actual, expected)
 
 
-    @database_only
-    def test_show_node_unavailable(self, db):
+    def test_show_node_unavailable(self):
         api.node_register('robocop', 'ipmihost', 'root', 'tapeworm')
         api.node_register_nic('robocop', 'eth0', 'DE:AD:BE:EF:20:14')
         api.node_register_nic('robocop', 'wlan0', 'DE:AD:BE:EF:20:15')
@@ -1250,13 +1125,11 @@ class TestQuery:
         }
         self._compare_node_dumps(actual, expected)
 
-    @database_only
-    def test_show_nonexistant_node(self, db):
+    def test_show_nonexistant_node(self):
         with pytest.raises(api.NotFoundError):
             api.show_node('master-control-program')
 
-    @database_only
-    def test_project_nodes_exist(self, db):
+    def test_project_nodes_exist(self):
         api.node_register('master-control-program', 'ipmihost', 'root', 'tapeworm')
         api.node_register('robocop', 'ipmihost', 'root', 'tapeworm')
         api.node_register('data', 'ipmihost', 'root', 'tapeworm')
@@ -1274,13 +1147,11 @@ class TestQuery:
             'robocop',
         ]
 
-    @database_only
-    def test_no_project_nodes(self, db):
+    def test_no_project_nodes(self):
         api.project_create('anvil-nextgen')
         assert json.loads(api.list_project_nodes('anvil-nextgen')) == []
 
-    @database_only
-    def test_some_nodes_in_project(self, db):
+    def test_some_nodes_in_project(self):
         """Test that only assigned nodes are in the project."""
         api.node_register('master-control-program', 'ipmihost', 'root', 'tapeworm')
         api.node_register('robocop', 'ipmihost', 'root', 'tapeworm')
@@ -1294,8 +1165,7 @@ class TestQuery:
         result.sort()
         assert result == ['data', 'robocop']
 
-    @database_only
-    def test_project_list_networks(self, db):
+    def test_project_list_networks(self):
         api.project_create('anvil-nextgen')
 
         network_create_simple('pxe', 'anvil-nextgen')
@@ -1311,14 +1181,12 @@ class TestQuery:
                 'pxe'
         ]
 
-    @database_only
-    def test_no_project_networks(self, db):
+    def test_no_project_networks(self):
         api.project_create('anvil-nextgen')
         assert json.loads(api.list_project_nodes('anvil-nextgen')) == []
 
 
-    @database_only
-    def test_show_headnode(self, db):
+    def test_show_headnode(self):
         api.project_create('anvil-nextgen')
         network_create_simple('spiderwebs', 'anvil-nextgen')
         api.headnode_create('BGH', 'anvil-nextgen', 'base-headnode')
@@ -1340,19 +1208,17 @@ class TestQuery:
             'vncport': None
         }
 
-    @database_only
-    def test_show_nonexistant_headnode(self, db):
+    def test_show_nonexistant_headnode(self):
         with pytest.raises(api.NotFoundError):
             api.show_headnode('BGH')
 
 
-    @database_only
-    def test_list_headnode_images(self, db):
+    def test_list_headnode_images(self):
         result = json.loads(api.list_headnode_images())
         assert result == [ 'base-headnode', 'img1', 'img2', 'img3', 'img4' ]
 
 
-class TestFancyNetworkCreate:
+class TestFancyNetworkCreate(DBOnlyTest):
     """Test creating network with advanced parameters.
 
     These test the 10 possible combinations of creator project, access
@@ -1363,26 +1229,23 @@ class TestFancyNetworkCreate:
     The details of these combinations are shown in docs/networks.md
     """
 
-    @database_only
-    def test_project_network(self, db):
+    def test_project_network(self):
         """Succesfully create a project-owned network."""
         api.project_create('anvil-nextgen')
         api.network_create('hammernet', 'anvil-nextgen', 'anvil-nextgen', '')
-        project = api._must_find(db, model.Project, 'anvil-nextgen')
-        network = api._must_find(db, model.Network, 'hammernet')
+        project = api._must_find(self.db, model.Project, 'anvil-nextgen')
+        network = api._must_find(self.db, model.Network, 'hammernet')
         assert network.creator is project
         assert network.access is project
         assert network.allocated is True
 
-    @database_only
-    def test_project_network_imported_fails(self, db):
+    def test_project_network_imported_fails(self):
         """Fail to make a project-owned network with a supplied net-id."""
         api.project_create('anvil-nextgen')
         with pytest.raises(api.BadArgumentError):
             api.network_create('hammernet', 'anvil-nextgen', 'anvil-nextgen', '35')
 
-    @database_only
-    def test_project_network_bad_access_fails(self, db):
+    def test_project_network_bad_access_fails(self):
         """Fail to make a project-owned network that others can access."""
         api.project_create('anvil-nextgen')
         api.project_create('anvil-oldtimer')
@@ -1391,18 +1254,17 @@ class TestFancyNetworkCreate:
                 with pytest.raises(api.BadArgumentError):
                     api.network_create('hammernet', 'anvil-nextgen', access, net_id)
 
-    @database_only
-    def test_admin_network(self, db):
+    def test_admin_network(self):
         """Succesfully create all 4 varieties of administrator-owned networks."""
         api.project_create('anvil-nextgen')
-        project = api._must_find(db, model.Project, 'anvil-nextgen')
+        project = api._must_find(self.db, model.Project, 'anvil-nextgen')
         for project_api, project_db in [('', None), ('anvil-nextgen', project)]:
             for net_id, allocated in [('', True), ('35', False)]:
                 network = 'hammernet' + project_api + net_id
                 api.network_create(network, 'admin', project_api, net_id)
-                network = api._must_find(db, model.Network, network)
+                network = api._must_find(self.db, model.Network, network)
                 assert network.creator is None
                 assert network.access is project_db
                 assert network.allocated is allocated
-            network = api._must_find(db, model.Network, 'hammernet' + project_api + '35')
+            network = api._must_find(self.db, model.Network, 'hammernet' + project_api + '35')
             assert network.network_id == '35'

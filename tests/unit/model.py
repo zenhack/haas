@@ -26,7 +26,9 @@ from abc import ABCMeta, abstractmethod
 from haas.model import *
 
 # There's probably a better way to do this
-from haas.test_common import newDB, releaseDB, database_only
+#from haas.test_common import newDB, releaseDB, database_only
+from haas.test_common import DBOnlyTest
+
 
 class ModelTest:
     """Superclass with tests common to all models.
@@ -49,57 +51,56 @@ class ModelTest:
     def test_repr(self):
         print(self.sample_obj())
 
-    @database_only
-    def test_insert(self, db):
-        db.add(self.sample_obj())
+    def test_insert(self):
+        self.db.add(self.sample_obj())
 
 
-class TestUsers(ModelTest):
+class TestUsers(ModelTest, DBOnlyTest):
     """Test user-related functionality"""
 
     def sample_obj(self):
         return User('bob', 'secret')
 
 
-class TestNic(ModelTest):
+class TestNic(ModelTest, DBOnlyTest):
 
     def sample_obj(self):
         return Nic(Node('node-99', 'ipmihost', 'root', 'tapeworm'),
                    'ipmi', '00:11:22:33:44:55')
 
 
-class TestNode(ModelTest):
+class TestNode(ModelTest, DBOnlyTest):
 
     def sample_obj(self):
         return Node('node-99', 'ipmihost', 'root', 'tapeworm')
 
 
-class TestProject(ModelTest):
+class TestProject(ModelTest, DBOnlyTest):
 
     def sample_obj(self):
         return Project('manhattan')
 
 
-class TestHeadnode(ModelTest):
+class TestHeadnode(ModelTest, DBOnlyTest):
 
     def sample_obj(self):
         return Headnode(Project('anvil-nextgen'), 'hn-example', 'base-headnode')
 
 
-class TestHnic(ModelTest):
+class TestHnic(ModelTest, DBOnlyTest):
 
     def sample_obj(self):
         return Hnic(Headnode(Project('anvil-nextgen'),
             'hn-0', 'base-headnode'), 'storage')
 
 
-class TestNetwork(ModelTest):
+class TestNetwork(ModelTest, DBOnlyTest):
 
     def sample_obj(self):
         pj = Project('anvil-nextgen')
         return Network(pj, pj, True, '102', 'hammernet')
 
-class TestNetworkingAction(ModelTest):
+class TestNetworkingAction(ModelTest, DBOnlyTest):
 
     def sample_obj(self):
         nic = Nic(Node('node-99', 'ipmihost', 'root', 'tapeworm'),

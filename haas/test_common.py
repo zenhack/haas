@@ -20,6 +20,7 @@ from haas.model import _on_virt_uri
 from haas.config import cfg
 from haas import api
 import json
+import unittest
 
 def network_create_simple(network, project):
     """Create a simple project-owned network.
@@ -45,70 +46,99 @@ def releaseDB(db):
     pass
 
 
-def clear_configuration(f):
-    """A decorator which clears all HaaS configuration both before and after
-    calling the function.  Used for tests which require a specific
-    configuration setup.
+def clear_config():
+    """Removes all sections/options from haas.config.cfg."""
+    for section in cfg.sections():
+        cfg.remove_section(section)
+
+
+def set_config(config_dict):
+    """Populates haas.config.cfg based on the contents of ``config_dict``.
+
+    ``config_dict`` should be a dictionary of the form:
+
+        {
+            "headnode": {
+                "libvirt_uri": "qemu://...",
+                ...
+            },
+            "devel": {
+                "dry_run": True,
+            },
+        }
+
+    i.e. a dictionary whose keys/values corresponding to section names/sections
+    of the config, with each "section" being a dictionary from option names to
+    values.
+
+    The config will *not* be cleared first -- ``clear_config`` should be called
+    explicitly.
+    """
+    for section in config_dict.keys():
+        cfg.add_section(section)
+
+        for option in config_dict[section].keys():
+            cfg.set(section, option, config_dict[section][option])
+
+
+class DBOnlyTest(unittest.TestCase):
+    """A test case which only interacts with the database.
+
+    Tests will run in dry-run mode, with the null driver, a fresh database,
+    and the list of valid base images:
+
+        base-headnode, img1, img2, img3, img4
     """
 
-    def config_clear():
-        for section in cfg.sections():
-            cfg.remove_section(section)
+    def setUp(self):
+        clear_config()
+        set_config({
+            'general': {'driver': 'null'},
+            'devel': {'dry_run': True},
+            'headnode': {'base_imgs': 'base-headnode, img1, img2, img3, img4'},
+        })
 
-    @wraps(f)
-    def wrapped(self):
-        config_clear()
-        f(self)
-        config_clear()
+        self.db = newDB()
 
-    return wrapped
+    def tearDown(self):
+        releaseDB(self.db)
 
 
-def database_only(f):
-    """A decorator which runs the given function on a fresh memory-backed
-    database, and a config that is empty except for making the 'null' backend
-    active,  and enabling the dry_run option.  Used for testing functions that
-    pertain to the database state, but not the state of the outside world, or
-    the network driver.
+class DeploymentTest(unittest.TestCase):
+    """A test case intended to run against a real swtich/libvirt.
+
+    The behavior of deployment tests is configured in ``deployment.cfg``, which
+    must exist in the current directory when the tests are run.
+
+    The database will be populated with available nodes from
+    ``site-layout.json.``
     """
 
-    def config_initialize():
-        # Use the 'null' backend for these tests
-        cfg.add_section('general')
-        cfg.set('general', 'driver', 'null')
-        cfg.add_section('devel')
-        cfg.set('devel', 'dry_run', True)
-        cfg.add_section('headnode')
-        cfg.set('headnode', 'base_imgs', 'base-headnode, img1, img2, img3, img4')
-
-    @wraps(f)
-    @clear_configuration
-    def wrapped(self):
-        config_initialize()
-        db = newDB()
-        f(self, db)
-        releaseDB(db)
-
-    return wrapped
-
-
-def deployment_test(f):
-    """A decorator which runs the given function on a fresh memory-backed
-    database and a config that is setup to operate with a dell switch.  Used
-    for testing functions that pertain to the state of the outside world.
-    These tests are very specific to our setup and are used for internal
-    testing purposes. These tests are unlikely to work with other HaaS
-    configurations.
-    """
-
-    def config_initialize():
+    def setUp(self):
         # Use the deployment config for these tests.  Setup such as the switch
         # IP address and password must be in this file, as well as the allowed
         # VLAN range.
         # XXX: Currently, the deployment tests only support the Dell driver.
+        clear_config()
         cfg.read('deployment.cfg')
+        self.db = newDB()
+        self.allocate_nodes()
 
-    def allocate_nodes():
+    def tearDown(self):
+        releaseDB(self.db)
+        # We need to clear out the headnode VMs left over from the test.
+        # There's a bug in some versions of libvirt which causes
+        # 'virsh undefine' to fail if called too quickly.
+        for hn in self.db.query(Headnode):
+            # XXX: Our current version of libvirt has a bug that causes this
+            # command to hang for a minute and throw an error before
+            # completing successfully.  For this reason, we are ignoring any
+            # errors thrown by 'virsh undefine'. This should be changed once
+            # we start using a version of libvirt that has fixed this bug.
+            call(_on_virt_uri(['virsh', 'undefine', hn._vmname(),
+                               '--remove-all-storage']))
+
+    def allocate_nodes(self):
         layout_json_data = open('site-layout.json')
         layout = json.load(layout_json_data)
         layout_json_data.close()
@@ -127,42 +157,3 @@ def deployment_test(f):
         driver_name = cfg.get('general', 'driver')
         driver = importlib.import_module('haas.drivers.' + driver_name)
         driver.apply_networking(netmap)
-
-
-    @wraps(f)
-    @clear_configuration
-    def wrapped(self):
-        config_initialize()
-        db = newDB()
-        allocate_nodes()
-        f(self, db)
-        releaseDB(db)
-
-    return wrapped
-
-def headnode_cleanup(f):
-    """A decorator which cleans up headnode VMs left by tests.  This is to
-    work around an irritating bug in some versions of libvirt, which causes
-    'virsh undefine' to fail if called too quickly.  This decorator depends on
-    the database containing an accurate list of headnodes.
-    """
-
-    def undefine_headnodes(db):
-        for hn in db.query(Headnode):
-            # XXX: Our current version of libvirt has a bug that causes this
-            # command to hang for a minute and throw an error before
-            # completing successfully.  For this reason, we are ignoring any
-            # errors thrown by 'virsh undefine'. This should be changed once
-            # we start using a version of libvirt that has fixed this bug.
-            call(_on_virt_uri(['virsh', 'undefine', hn._vmname(),
-                               '--remove-all-storage']))
-
-    @wraps(f)
-    def wrapped(self, db):
-        try:
-            f(self, db)
-        finally:
-            undefine_headnodes(db)
-
-    return wrapped
-

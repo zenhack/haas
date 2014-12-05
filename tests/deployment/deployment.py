@@ -21,28 +21,17 @@ from haas.drivers.driver_tools.vlan import get_vlan_list
 from haas.test_common import *
 import importlib
 import json
-import pexpect
-import pytest
-import re
 
-class TestHeadNode:
-    # XXX: These tests will fail when py.test is ran with '--cov-report
-    # term-missing --cov haas'.  Specifically, headnode_create() will throw an
-    # exception because check_call(['virt-clone', ...]') returns a non-zero
-    # status code.  The error presented is:
 
-    #       'import site' failed; use -v for traceback
-    #       Traceback (most recent call last):
-    #           File "/usr/bin/virt-clone", line 25, in <module>
-    #           import virtinst.CloneManager as clmgr
-    #       ImportError: No module named virtinst.CloneManager
+class TestHeadNode(DeploymentTest):
+    """Test the lifecycle of a headnode."""
 
-    # The tests can be run successfully by commenting out 'addopts =
-    # --cov-report term-missing --cov haas' in setup.cfg.
+    def test_headnode_vnc(self):
+        """Ensure that:
 
-    @deployment_test
-    @headnode_cleanup
-    def test_headnode(self, db):
+        1. A headnode which has not been started has a null vnc port.
+        2. A running headnode has a defined vnc port.
+        """
         api.project_create('anvil-nextgen')
         network_create_simple('spider-web', 'anvil-nextgen')
         api.headnode_create('hn-0', 'anvil-nextgen', 'base-headnode')
@@ -54,20 +43,17 @@ class TestHeadNode:
         api.headnode_stop('hn-0')
         api.headnode_delete('hn-0')
 
-    @deployment_test
-    @headnode_cleanup
-    def test_headnode_deletion_while_running(self, db):
+    def test_headnode_deletion_while_running(self):
+        """Ensure that deleting a running headnode does not raise an error."""
         api.project_create('anvil-nextgen')
         api.headnode_create('hn-0', 'anvil-nextgen', 'base-headnode-2')
         api.headnode_start('hn-0')
         api.headnode_delete('hn-0')
 
 
-class TestNetwork:
+class TestNetwork(DeploymentTest):
 
-    @deployment_test
-    @headnode_cleanup
-    def test_isolated_networks(self, db):
+    def test_isolated_networks(self):
 
         driver_name = cfg.get('general', 'driver')
         driver = importlib.import_module('haas.drivers.' + driver_name)
@@ -84,7 +70,7 @@ class TestNetwork:
 
         def create_networks():
             # Add up to 4 available nodes with nics to the project
-            free_nodes = db.query(model.Node).filter_by(project_id=None).all()
+            free_nodes = self.db.query(model.Node).filter_by(project_id=None).all()
             nodes = []
             for node in free_nodes:
                 if len(node.nics) > 0:
@@ -139,7 +125,7 @@ class TestNetwork:
 
         def delete_networks():
             # Query the DB for nodes on this project
-            project = api._must_find(db, model.Project, 'anvil-nextgen')
+            project = api._must_find(self.db, model.Project, 'anvil-nextgen')
             nodes = project.nodes
 
             # Remove all nodes from their networks

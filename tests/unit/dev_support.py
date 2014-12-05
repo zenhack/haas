@@ -38,15 +38,15 @@ def _method():
 
 
 # We test the decorator both with the option enabled and with it disabled.
-@clear_configuration
 def _dry(func):
+    clear_config()
     cfg.add_section('devel')
     cfg.set('devel', 'dry_run', True)
     func()
 
 
-@clear_configuration
 def _wet(func):
+    clear_config()
     # The option does not exist by default, so we don't need to toggle the
     # config for this.
     with pytest.raises(AssertionError):

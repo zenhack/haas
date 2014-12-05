@@ -39,12 +39,13 @@ def vlan_test(vlan_list):
             cfg.set('vlan', 'vlans', vlan_list)
 
         @wraps(f)
-        @clear_configuration
         def wrapped(self):
+            clear_config()
             config_initialize()
             db = newDB()
             f(self, db)
             releaseDB(db)
+            clear_config()
 
         return wrapped
 

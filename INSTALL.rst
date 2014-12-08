@@ -1,6 +1,7 @@
 This document describes the installation and setup of HaaS on CentOS 6.5.
 HaaS should work on other distros, but is not well tested or supported.
-For development environments, see ``HACKING.rst``.
+For development environments, see ``HACKING.rst``. Either SQLite or MySQL may be
+used for the database; the procedure for each is described here.
 
 The HaaS Service node
 =====================
@@ -21,7 +22,19 @@ Then, the rest of the packages can be installed via:
 
 ::
 
-    yum install libvirt bridge-utils ipmitool telnet sqlite httpd mod_wsgi python-pip qemu-kvm python-virtinst
+    yum install libvirt bridge-utils ipmitool telnet httpd mod_wsgi python-pip qemu-kvm python-virtinst
+
+If using the SQLite database backend, you'll also need to install sqlite:
+
+::
+
+    yum install sqlite
+
+If using the MySQL, you'll need:
+
+::
+
+    yum install mysql-server MySQL-python
 
 In addition, HaaS depends on a number of python libraries. Many of these are
 available as RPMs as well, but we recommend installing them with pip, since
@@ -45,19 +58,25 @@ The HaaS software can then be installed similarly:
     cd haas
     sudo python setup.py install
 
-Disable SELinux
----------------
+SELinux
+-------
 
-The setup described below runs into problems with SELinux related to the sqlite
-database. For now the recommended solution is to simply disable SELinux. In
-future releases, we will support and recommend the use of SELinux with another
-DBMS, such as MySQL.
+The setup described below runs into problems with SELinux when using the SQLite
+database. For now the recommended solution is to disable SELinux when using
+SQLite.
 
 ::
 
     sudo setenforce 0
 
-Make sure SELinux is also disabled on startup.
+Also make sure SELinux is also disabled on startup. Edit `/etc/selinux/config`
+setting:
+
+::
+
+    SELINUX=permisive
+
+This is not necessary when using MySQL.
 
 Create User
 -----------
@@ -244,15 +263,42 @@ configuring the ubuntu headnode to act as a PXE server; see the README in
 that directory for more information.
 
 Database
-------------
+--------
 
-HaaS currently supports SQLite for maintaining state. Because SQLAlchemy is
-used as a database access layer, other DBs can and should be easily supported
-in future releases. The database must be readable and writable by the HaaS
-user.  Running the following command as ``haas_user`` will create it (in the
-location specified in ``haas.cfg``) and initialize its tables::
+If using mysql, you need to start the database server (and enable it on boot):
+
+::
+
+  service mysqld start
+  chkconfig mysqld on
+
+Then, log in to the database server::
+
+  mysql -u root -p
+ 
+and execute::
+
+  CREATE DATABASE haas_db;
+  CREATE USER haas_db_user IDENTIFIED BY 'password';
+  GRANT ALL ON haas_db.* TO haas_db_user;
+
+Substituting your own values for `haas_db`, `haas_db_user`, and `password`. Make
+sure these are the same as the values in `haas.cfg`.
+
+We *strongly* recommend configuring MySQL for "traditional" mode; MySQL does
+very little sanity checking by default.
+
+If using SQLite, make sure `haas.cfg` specifies a path to the database that is
+readable and writable by the user that HaaS will run as.
+
+With all DBMSes, the following command must be used to initialize the
+database:
+
+::
 
   haas init_db
+
+If using SQLite, this must be run as the HaaS user.
 
 Running the Server under Apache
 -------------------------------
@@ -316,7 +362,7 @@ as the HaaS user. To make this happen on boot, add the following to ``/etc/rc.lo
 Congratulations- at this point, you should have a functional HaaS service running!
 
 Describe datacenter resources
-===================================
+=============================
 
 For HaaS to do anything useful, you must use the HaaS API to populate the
 database with information about the resources in your datacenter -- chiefly

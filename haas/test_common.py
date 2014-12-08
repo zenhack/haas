@@ -40,9 +40,15 @@ def newDB():
     init_db(create=True,uri="sqlite:///:memory:")
     return Session()
 
+
 def releaseDB(db):
-    """Do we need to do anything here to release resources?"""
-    pass
+    """Clean out the database, so it's empty for the next test."""
+    db.commit()
+    db = Session()
+    for cls in Model.__subclasses__():
+        db.query(cls).delete()
+    db.query(NetworkingAction).delete()
+    db.commit()
 
 
 def clear_configuration(f):

@@ -47,7 +47,7 @@ libvirt_endpoint = qemu:///system
 # The http endpoint that the command line tool should connect to. The server
 # doesn't use this; it must be configured separately. To double check that you
 # have the right value, make sure the API server is running, and execute::
-# 
+#
 #   haas list_free_nodes
 #
 # from within the directory containing haas.cfg.
@@ -55,12 +55,18 @@ endpoint = http://127.0.0.1
 
 [database]
 # A SQLAlchemy database URI, specifying the database for the server to
-# connect to. At present, only sqlite is supported. Both the API server
-# and ``haas serve_networks`` need write access to the database.
+# connect to. Both MySQL and SQLite are supported. If using mysql, this should
+# look something like:
+uri = mysql://user:password@localhost/haas
+# If using SQLite, the following value may be appropriate:
 #
-# The suggested value below assumes both will run as a system user
+# uri = sqlite:////var/lib/haas/haas.db
+#
+# The suggested value above assumes both will run as a system user
 # whose home directory is ``/var/lib/haas``.
-uri = sqlite:////var/lib/haas/haas.db
+#
+# Both the API server  and ``haas serve_networks`` need write access to
+# the database.
 
 [driver simple_vlan]
 # Driver specific settings for the ``simple_vlan`` driver.

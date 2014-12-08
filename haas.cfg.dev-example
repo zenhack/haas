@@ -57,8 +57,8 @@ endpoint = http://127.0.0.1:5000
 
 [database]
 # A SQLAlchemy database URI, specifying the database for the server to
-# connect to. At present, only sqlite is supported. The example below is a
-# relative path, which looks for the database in the current directory.
+# connect to. At present, sqlite and mysql are supported. The example
+# below uses sqlite, and looks for the database in the current directory.
 uri = sqlite:///haas.db
 
 [driver simple_vlan]

@@ -5,3 +5,4 @@ pexpect==3.3
 requests==2.4.1
 pytest==2.6.2
 pytest-cov==1.8.0
+schema==0.3.1

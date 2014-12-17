@@ -22,7 +22,7 @@ import logging
 
 from haas import model
 from haas.config import cfg
-from moc.rest import APIError, rest_call
+from moc.rest import APIError, ValidationError, rest_call, req_local
 
 
 class NotFoundError(APIError):
@@ -808,6 +808,31 @@ def stop_console(nodename):
     node.stop_console()
     node.delete_console()
 
+
+# New UUID based api:
+
+_api_root_types = dict([(t.__name__.lower(), t) for t in [
+        model.Node,
+        model.Nic,
+        model.Headnode,
+        model.Hnic,
+        model.Network,
+    ]])
+
+
+@rest_call('POST', '/<typ>')
+def uuid_object_create(typ, request_body):
+    if typ not in _api_root_types:
+        raise NotFoundError('%s is not a valid object type.' % typ)
+    cls = _api_root_types[typ]
+    req_local.db = model.Session()
+    try:
+        obj = cls.from_json(json.loads(request_body))
+    except ValueError:
+        raise ValidationError("Request body was not valid JSON.")
+    req_local.db.add(obj)
+    req_local.db.commit()
+    return obj.to_json()
 
     # Helper functions #
     ####################

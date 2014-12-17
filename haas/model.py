@@ -22,10 +22,12 @@ import subprocess
 from haas.config import cfg
 from haas.dev_support import no_dry_run
 import importlib
-import uuid
+from uuid import uuid4 as uuidgen
 import xml.etree.ElementTree
 import logging
 import os
+import json
+from schema import Schema, SchemaError, Optional
 
 Base=declarative_base()
 Session = sessionmaker()
@@ -88,10 +90,10 @@ class Model(AnonModel):
     objects descend from this class.
     """
     __abstract__ = True
-    label = Column(String, nullable=False)
+    uuid = Column(String, nullable=False, unique=True)
 
     def __repr__(self):
-        return '%s<%r>' % (self.__class__.__name__, self.label)
+        return '%s<%r>' % (self.__class__.__name__, self.uuid)
 
 
 class Nic(Model):
@@ -112,10 +114,33 @@ class Nic(Model):
     network_id = Column(Integer, ForeignKey('network.id'))
     network   = relationship("Network", backref=backref('nics'))
 
-    def __init__(self, node, label, mac_addr):
-        self.owner     = node
-        self.label     = label
+    label = Column(String, nullable=False)
+
+    def __init__(self, mac_addr, port):
+        self.owner = node
+        self.uuid = str(uuidgen())
         self.mac_addr  = mac_addr
+        self.port = port
+
+    schema = Schema({
+        'mac_addr': basestring,
+        'port': basestring,
+    })
+
+    @staticmethod
+    def from_json(obj):
+        try:
+            obj = Node.schema.validate(obj)
+        except SchemaError:
+            raise
+        return Nic(obj['mac_addr'], Port(obj['port']))
+
+    def to_json(self):
+        return {
+            'uuid': self.uuid,
+            'mac_addr': self.mac_addr,
+            'port': self.port.label,
+        }
 
 
 class Node(Model):
@@ -131,7 +156,54 @@ class Node(Model):
     ipmi_user = Column(String, nullable=False)
     ipmi_pass = Column(String, nullable=False)
 
-    def __init__(self, label, ipmi_host, ipmi_user, ipmi_pass):
+    uuid = Column(String, nullable=False, unique=True)
+
+    schema = Schema(
+    {
+        'ipmi': {
+            'user': basestring,
+            'host': basestring,
+            'pass': basestring,
+        },
+        Optional('nics'): {
+            basestring: Nic.schema
+        },
+    })
+
+    @staticmethod
+    def from_json(obj):
+        try:
+            obj = Node.schema.validate(obj)
+        except SchemaError:
+            raise  # TODO: find the proper APIError to raise here.
+        self = Node(
+            ipmi_user=obj['ipmi']['user'],
+            ipmi_host=obj['ipmi']['host'],
+            ipmi_pass=obj['ipmi']['pass'],
+            )
+        if 'nics' in obj:
+            for name, nic in obj['nics'].iteritems():
+                nic = Nic.from_json(nic)
+                nic.label = name
+                self.nics.append(nic)
+        return self
+
+
+    def to_json(self):
+        # TODO: we should strip out some of the sensitive fields like
+        # ``ipmi`` (perhaps conditionally?
+        return json.dumps({
+            'uuid': self.uuid,
+            'free': self.project_id is None,
+            'nics': dict([(nic.label, nic.to_json()) for nic in self.nics]),
+            'ipmi': {
+                'host': self.ipmi_host,
+                'user': self.ipmi_user,
+                'pass': self.ipmi_pass,
+            },
+        })
+
+    def __init__(self, ipmi_host, ipmi_user, ipmi_pass):
         """Register the given node.
 
         ipmi_* must be supplied to allow the HaaS to do things like reboot
@@ -139,7 +211,8 @@ class Node(Model):
 
         The node is initially registered with no nics; see the Nic class.
         """
-        self.label = label
+        self.uuid = str(uuidgen())
+        self.label = self.uuid
         self.ipmi_host = ipmi_host
         self.ipmi_user = ipmi_user
         self.ipmi_pass = ipmi_pass
@@ -346,7 +419,7 @@ class Headnode(Model):
         self.project = project
         self.label = label
         self.dirty = True
-        self.uuid = str(uuid.uuid1())
+        self.uuid = str(uuid.uuidgen())
         self.base_img = base_img
 
 

@@ -82,3 +82,23 @@ def test_uuid_object_create(typ, input, output):
     """Test ``api.uuid_object_create`` for various types & values."""
     result = api.uuid_object_create(typ, json.dumps(input))
     Schema(And(Use(json.loads, output))).validate(result)
+
+
+class Test_project_create(object):
+
+    def test_create_one(self):
+        """Create a single project. Should succeed."""
+        api.project_create("manhattan")
+        api._must_find(req_local.db, model.Project, name="manhattan")
+
+    def test_duplicate(self):
+        """Try to create a duplicate project, which should fail."""
+        api.project_create("manhattan")
+        with pytest.raises(api.DuplicateError):
+            api.project_create("manhattan")
+
+    def test_two_different(self):
+        """Create two projects, with different names. Should succeed."""
+        for name in "manhattan", "runway":
+            api.project_create(name)
+            api._must_find(req_local.db, model.Project, name=name)

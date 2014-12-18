@@ -63,8 +63,8 @@ def init_db(create=False, uri=None):
     driver.init_db(create=create)
 
 
-class AnonModel(Base):
-    """A database model with a primary key, 'id', but no user-visible label
+class Model(Base):
+    """A database model with a primary key, 'id', but no user-visible data
 
     All our database models descend from this class.
 
@@ -83,11 +83,10 @@ class AnonModel(Base):
         return cls.__name__.lower()
 
 
-class Model(AnonModel):
-    """A database model with a primary key 'id' and a user-visible label.
+class UUIDModel(Model):
+    """A database model with a primary key 'id' and a user-visible UUID.
 
-    All objects in the HaaS API are referenced by their 'label', so all such
-    objects descend from this class.
+    Many resources in HaaS are referenced via UUIDs.
     """
     __abstract__ = True
     uuid = Column(String, nullable=False, unique=True)
@@ -96,7 +95,7 @@ class Model(AnonModel):
         return '%s<%r>' % (self.__class__.__name__, self.uuid)
 
 
-class Nic(Model):
+class Nic(UUIDModel):
     """a nic belonging to a Node"""
 
     # The Node to which the nic belongs:
@@ -142,7 +141,7 @@ class Nic(Model):
         })
 
 
-class Node(Model):
+class Node(UUIDModel):
     """a (physical) machine"""
 
     # The project to which this node is allocated. If the project is null, the
@@ -301,12 +300,14 @@ class Project(Model):
     A project may contain allocated nodes, networks, and headnodes.
     """
 
-    def __init__(self, label):
-        """Create a project with the given label."""
-        self.label = label
+    name = Column(String, unique=True, nullable=False)
+
+    def __init__(self, name):
+        """Create a project with the given name."""
+        self.name = name
 
 
-class Network(Model):
+class Network(UUIDModel):
     """A link-layer network.
 
     See docs/networks.md for more information on the parameters.
@@ -401,7 +402,7 @@ def _on_virt_uri(args_list):
     return [args_list[0], '--connect', libvirt_endpoint] + args_list[1:]
 
 
-class Headnode(Model):
+class Headnode(UUIDModel):
     """A virtual machine used to administer a project."""
 
     # The project to which this Headnode belongs:
@@ -502,7 +503,7 @@ class Headnode(Model):
         return None
 
 
-class Hnic(Model):
+class Hnic(UUIDModel):
     """a network interface for a Headnode"""
 
     # The Headnode to which this Hnic belongs:
@@ -538,11 +539,8 @@ class Hnic(Model):
                                  '--config']))
 
 
-class NetworkingAction(AnonModel):
+class NetworkingAction(Model):
     """A journal entry representing a pending networking change."""
-
-    # This model is not visible in the API, so inherit from AnonModel
-
     nic_id = Column(Integer, ForeignKey('nic.id'), nullable=False)
     nic    = relationship("Nic", backref=backref('current_action',
                                                  uselist=False))

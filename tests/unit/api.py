@@ -56,17 +56,6 @@ class TestProjectCreateDelete:
     """Tests for the haas.api.project_* functions."""
 
     @database_only
-    def test_project_create_success(self, db):
-        api.project_create('anvil-nextgen')
-        api._must_find(db, model.Project, 'anvil-nextgen')
-
-    @database_only
-    def test_project_create_duplicate(self, db):
-        api.project_create('anvil-nextgen')
-        with pytest.raises(api.DuplicateError):
-            api.project_create('anvil-nextgen')
-
-    @database_only
     def test_project_delete(self, db):
         api.project_create('anvil-nextgen')
         api.project_delete('anvil-nextgen')

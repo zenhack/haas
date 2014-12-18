@@ -104,18 +104,6 @@ def user_delete(user):
                             ################
 
 
-@rest_call('PUT', '/project/<project>')
-def project_create(project):
-    """Create a project.
-
-    If the project already exists, a DuplicateError will be raised.
-    """
-    db = model.Session()
-    _assert_absent(db, model.Project, project)
-    project = model.Project(project)
-    db.add(project)
-    db.commit()
-
 
 @rest_call('DELETE', '/project/<project>')
 def project_delete(project):
@@ -832,11 +820,25 @@ def uuid_object_create(typ, request_body):
     req_local.db.commit()
     return obj.to_json()
 
+@rest_call('PUT', '/project/<project>')
+def project_create(project):
+    """Create a project.
+
+    If the project already exists, a DuplicateError will be raised.
+    """
+    db = req_local.db
+    _assert_absent(db, model.Project, name=project)
+    project = model.Project(project)
+    db.add(project)
+    db.commit()
+
+
+
     # Helper functions #
     ####################
 
 
-def _assert_absent(session, cls, name):
+def _assert_absent(session, cls, **kwargs):
     """Raises a DuplicateError if the given object is already in the database.
 
     This is useful for most of the *_create functions.
@@ -845,14 +847,15 @@ def _assert_absent(session, cls, name):
 
     session - a sqlaclhemy session to use.
     cls - the class of the object to query.
-    name - the name of the object in question.
+
+    Any remaining arguments will be passed through to sqlalchemy's ``filter_by``.
     """
-    obj = session.query(cls).filter_by(label=name).first()
+    obj = session.query(cls).filter_by(**kwargs).first()
     if obj:
-        raise DuplicateError("%s %s already exists." % (cls.__name__, name))
+        raise DuplicateError("%s already exists." % cls.__name__)
 
 
-def _must_find(session, cls, name):
+def _must_find(session, cls, **kwargs):
     """Raises a NotFoundError if the given object doesn't exist in the datbase.
     Otherwise returns the object
 
@@ -862,11 +865,12 @@ def _must_find(session, cls, name):
 
     session - a sqlaclhemy session to use.
     cls - the class of the object to query.
-    name - the name of the object in question.
+
+    Any remaining arguments will be passed through to sqlalchemy's ``filter_by``.
     """
-    obj = session.query(cls).filter_by(label=name).first()
+    obj = session.query(cls).filter_by(**kwargs).first()
     if not obj:
-        raise NotFoundError("%s %s does not exist." % (cls.__name__, name))
+        raise NotFoundError("%s does not exist." % cls.__name__)
     return obj
 
 def _namespaced_query(session, obj_outer, cls_inner, name_inner):

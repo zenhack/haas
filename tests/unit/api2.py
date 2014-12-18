@@ -6,6 +6,7 @@ from uuid import UUID
 from werkzeug.local import release_local
 import json
 import pytest
+import unittest
 
 
 @pytest.yield_fixture
@@ -102,3 +103,25 @@ class Test_project_create(object):
         for name in "manhattan", "runway":
             api.project_create(name)
             api._must_find(req_local.db, model.Project, name=name)
+
+
+class Test_project_delete(unittest.TestCase):
+
+    def setUp(self):
+        api.project_create("runway")
+
+    def test_delete_once(self):
+        """Delete a project that exists (once)."""
+        api.project_delete("runway")
+        api._assert_absent(req_local.db, model.Project, name="runway")
+
+    def test_delete_twice(self):
+        """Delete a project that exists, twice. The second try should fail."""
+        api.project_delete("runway")
+        with pytest.raises(api.NotFoundError):
+            api.project_delete("runway")
+
+    def test_delete_nonexistant(self):
+        """Try to delete a project that doesn't exist. Should fail."""
+        with pytest.raises(api.NotFoundError):
+            api.project_delete("manhattan")

@@ -111,8 +111,8 @@ def project_delete(project):
 
     If the project does not exist, a NotFoundError will be raised.
     """
-    db = model.Session()
-    project = _must_find(db, model.Project, project)
+    db = req_local.db
+    project = _must_find(db, model.Project, name=project)
     if project.nodes:
         raise BlockedError("Project has nodes still")
     if project.networks_created:

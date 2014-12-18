@@ -55,17 +55,6 @@ class TestUser:
 class TestProjectCreateDelete:
     """Tests for the haas.api.project_* functions."""
 
-    @database_only
-    def test_project_delete(self, db):
-        api.project_create('anvil-nextgen')
-        api.project_delete('anvil-nextgen')
-        with pytest.raises(api.NotFoundError):
-            api._must_find(db, model.Project, 'anvil-nextgen')
-
-    @database_only
-    def test_project_delete_nexist(self, db):
-        with pytest.raises(api.NotFoundError):
-            api.project_delete('anvil-nextgen')
 
     @database_only
     def test_project_delete_hasnode(self, db):

@@ -28,6 +28,8 @@ from haas.model import *
 # There's probably a better way to do this
 from haas.test_common import newDB, releaseDB, database_only
 
+import pytest
+
 class ModelTest:
     """Superclass with tests common to all models.
 
@@ -61,17 +63,19 @@ class TestUsers(ModelTest):
         return User('bob', 'secret')
 
 
+@pytest.mark.xfail
 class TestNic(ModelTest):
 
     def sample_obj(self):
-        return Nic(Node('node-99', 'ipmihost', 'root', 'tapeworm'),
-                   'ipmi', '00:11:22:33:44:55')
+        nic = Nic('00:11:22:33:44:55', Port('gi1/0/10'))
+        node = Node('ipmihost', 'root', 'tapeworm')
+        nic.owner = node
 
 
 class TestNode(ModelTest):
 
     def sample_obj(self):
-        return Node('node-99', 'ipmihost', 'root', 'tapeworm')
+        return Node('ipmihost', 'root', 'tapeworm')
 
 
 class TestProject(ModelTest):

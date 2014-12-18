@@ -813,9 +813,7 @@ def stop_console(nodename):
 
 _api_root_types = dict([(t.__name__.lower(), t) for t in [
         model.Node,
-        model.Nic,
         model.Headnode,
-        model.Hnic,
         model.Network,
     ]])
 

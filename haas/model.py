@@ -117,7 +117,6 @@ class Nic(Model):
     label = Column(String, nullable=False)
 
     def __init__(self, mac_addr, port):
-        self.owner = node
         self.uuid = str(uuidgen())
         self.mac_addr  = mac_addr
         self.port = port
@@ -130,17 +129,17 @@ class Nic(Model):
     @staticmethod
     def from_json(obj):
         try:
-            obj = Node.schema.validate(obj)
+            obj = Nic.schema.validate(obj)
         except SchemaError:
             raise
         return Nic(obj['mac_addr'], Port(obj['port']))
 
     def to_json(self):
-        return {
+        return json.dumps({
             'uuid': self.uuid,
             'mac_addr': self.mac_addr,
-            'port': self.port.label,
-        }
+            'port': self.port.name,
+        })
 
 
 class Node(Model):
@@ -355,9 +354,12 @@ class Port(Model):
     corresponding switch's driver.
     """
 
-    def __init__(self, label):
+    name = Column(String, nullable=False)
+
+    def __init__(self, name):
         """Register a port on a switch."""
-        self.label   = label
+        self.uuid = str(uuidgen())
+        self.name = name
 
 
 class User(Model):

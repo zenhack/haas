@@ -1,0 +1,204 @@
+This is a very rough outline of the UUID-based API.
+
+# Generalities
+
+Most objects are addressed by a uuid, which is allocated by HaaS on creation.
+Objects are created by making a POST request on ``/<type>``, where ``type`` is
+the type of the object.
+
+Removal of objects happens via a DELETE request on ``/type/<id>``.
+
+A GET request on ``/type/<id>`` will return a description of the object.
+depending on the priviledges of the requesting user, some information may be
+omitted.
+
+## projects
+
+The current project is determined by the header ``X-HaaS-Project``.
+Authentication is backend dependent. Certain API calls may refer to
+the current project in the description of their operation. The project "admin"
+is reserved for administrative use.
+
+Unlike most addressable objects, projects have a user-chosen identifier, which
+must begin with an underscore or a letter, and must consist of only underscores,
+letters, and digits.
+
+A GET request on /project/<projectname> returns a description of all resources
+owned by that project, e.g.
+
+        {
+                "name": "moc-developers",
+                "networks": [
+                        <like output of GET /network/<id>
+                ],
+                "nodes": [
+                        <like output of GET /node/<id>
+                ],
+                "headnodes": [
+                        <like output of GET /headnode/<id>
+                ]
+        }
+
+A GET request returns a list of all projects. This is an admin-only operation.
+
+# api call summary
+
+/node
+    POST -- register new node. admin only.
+
+        Input looks like:
+
+        {
+            "ipmi": {
+                "host": "10.124.1.2",
+                "user": "alice",
+                "pass": "secret"
+            },
+            "nics" : {
+                "eth0": {
+                    "mac_addr": "de:ad:be:ef:20:14",
+                    "port": "gi1/0/4"
+                },
+                "eth1": {
+                    "mac_addr": "de:ad:be:ef:20:14",
+                    "port": "gi1/0/7"
+                },
+            }
+        }
+
+        A successful call returns the same output as GET /node/<id> (below).
+        (successful) output looks like:
+
+/node/<id>
+    GET -- returns:
+        {
+            "uuid": "8cb0f008-edfa-44b8-b062-09d7dff0f94e",
+            "ipmi": <admin only, same as /node POST>
+            "nics": {
+                "eth0": {
+                    "uuid": "fb045e71-8e37-4e9e-97ec-9a44873d48ce",
+                    "mac_addr": "de:ad:be:ef:20:14",
+                    "port": "gi1/0/4"
+                },
+                "eth1": {
+                    "uuid": "9ebac7f8-1cb9-491a-816b-a6fdab20906a",
+                    "mac_addr": "de:ad:be:ef:20:15",
+                    "port": "gi1/0/21"
+                }
+            },
+            "project": true # true -- allocated, but you're not allow to
+                            #         see to whom.
+                            # "string" -- allocated to project "string".
+                            # <absent> -- not allocated.
+        }
+
+        How to decide whether to show ipmi? Might not always want to
+        show it, even when admin. query string?
+
+    DELETE -- deletes/unregisters the node. admin only.
+
+A GET on /node returns a json list whose elements are as GET /node/<id> for each
+node.
+
+A PUT request on /node/<id>/project with the project name, as a json string, in
+the body, reserves the node for that project. A DELETE frees the node.
+
+obm related (these work the same as the current versions):
+
+/node/<id>/reset POST -- reboot the node
+/node/<id>/start POST -- turn the node on
+/node/<id>/stop  POST -- turn the node off
+/node/<id>/console GET -- get the console
+
+        Maybe in the future: "network": { "native": "foo", "tagged": [102, 4] }
+
+/headnode -- similar to node, but:
+
+* no /headnode/<id>/console
+* Always assigned to a project. Upon creation, the headnode is assigned to the
+  current project.
+* GET /headnode/<id> also has a "vnc_port" field, which works the same way as in
+  the old API.
+* Nics don't have mac addresses.
+* Nics may be accessed via ``/hnic/<id>``, not ``/nic/<id>``. Note that the json
+  field is still "nics".
+
+  RATIONALE: headnodes and nodes behave similarly for the most part; it is
+  convienent for the json representations to be similar as well -- we hope to
+  merge these objects in the future.
+
+  having ``/hnic`` is probably a mistake, and we may or may not implement it
+  this way.
+
+
+# Nics
+
+In the future, nics may include network interfaces belonging to things other
+than (head)nodes -- in theory, they could be entirely separable objects. For
+this reason they are addressed as if they were separate objects, though creation
+and deletion work differently.
+
+In the following examples all paths are ``/nic``; the same works for hnics.
+
+/nic/<id>
+
+    GET
+
+        {
+            "node": "09dece59-6511-4adf-93d9-9675216fd824",
+            "uuid": "c38b40cf-2279-4335-8a55-097d5062d237",
+            "hwaddr": "de:ad:be:ef:20:15", (absent on hnics)
+            "port": "gi1/0/4", (admin only)
+            "network" : "57cec931-fb18-4aac-9f31-7046b7ad3be1" (if exists)
+        }
+
+A PUT request on ``/nic/<id>/network`` with a body containing a UUID in the form
+of a JSON string attaches the nic to the network with that UUID.
+
+A DELETE request on ``/nic/<id>/network`` detaches the nic from any networks.
+
+Nics cannot be deleted or created by themselves; this happens through
+creation/deletion of their parent objects.
+
+# Networks
+
+Creation/deletion works similarly to (head)nodes:
+
+POST /network
+
+        {
+                "network_id": "42", (opaque field, interp. is driver-dependant).
+                "access": "moc-developers",
+        }
+
+Both the above fields are optional, and furthermore only writable by
+administrators. If neither is specified, the body of the request may be empty
+(i.e., there need not be an empty json object).
+
+networks.md describes the networking semantics in detail.
+
+If "network_id" is not specified, it will be allocated.
+
+If access is the empty string, the network is public. If it is the name of a
+project, the network will be accessible only by that project. If the field is
+absent, it defaults to the current project.
+
+The "creator" as described in networks.md is the current project.
+
+The response to the post request is the same as a GET request on /network/<id>.
+
+GET /network/<id>
+
+        {
+                "uuid": "e03cf76c-9873-442b-b4aa-36b9a2c6fa6b",
+                "owner": "moc-developers", (a project name, possibly "admin".)
+                "access": "moc-devleopers", (or the empty string for public.)
+                "network_id": "42" (admin only)
+        }
+
+# Future
+
+MAC address are a somewhat arbitrary piece of information to be storing. HaaS
+doesn't use them itself, why not have an opaque "info" field that can be used
+for anything?
+

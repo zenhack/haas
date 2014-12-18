@@ -106,7 +106,7 @@ def user_delete(user):
 
 
 @rest_call('DELETE', '/project/<project>')
-def project_delete(project):
+def project_delete(project, request_body):
     """Delete project.
 
     If the project does not exist, a NotFoundError will be raised.
@@ -821,7 +821,7 @@ def uuid_object_create(typ, request_body):
     return obj.to_json()
 
 @rest_call('PUT', '/project/<project>')
-def project_create(project):
+def project_create(project, request_body):
     """Create a project.
 
     If the project already exists, a DuplicateError will be raised.

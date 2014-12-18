@@ -89,39 +89,39 @@ class Test_project_create(object):
 
     def test_create_one(self):
         """Create a single project. Should succeed."""
-        api.project_create("manhattan")
+        api.project_create("manhattan", "")
         api._must_find(req_local.db, model.Project, name="manhattan")
 
     def test_duplicate(self):
         """Try to create a duplicate project, which should fail."""
-        api.project_create("manhattan")
+        api.project_create("manhattan", "")
         with pytest.raises(api.DuplicateError):
-            api.project_create("manhattan")
+            api.project_create("manhattan", "")
 
     def test_two_different(self):
         """Create two projects, with different names. Should succeed."""
         for name in "manhattan", "runway":
-            api.project_create(name)
+            api.project_create(name, "")
             api._must_find(req_local.db, model.Project, name=name)
 
 
 class Test_project_delete(unittest.TestCase):
 
     def setUp(self):
-        api.project_create("runway")
+        api.project_create("runway", "")
 
     def test_delete_once(self):
         """Delete a project that exists (once)."""
-        api.project_delete("runway")
+        api.project_delete("runway", "")
         api._assert_absent(req_local.db, model.Project, name="runway")
 
     def test_delete_twice(self):
         """Delete a project that exists, twice. The second try should fail."""
-        api.project_delete("runway")
+        api.project_delete("runway", "")
         with pytest.raises(api.NotFoundError):
-            api.project_delete("runway")
+            api.project_delete("runway", "")
 
     def test_delete_nonexistant(self):
         """Try to delete a project that doesn't exist. Should fail."""
         with pytest.raises(api.NotFoundError):
-            api.project_delete("manhattan")
+            api.project_delete("manhattan", "")

@@ -110,7 +110,7 @@ def project_delete(project, request_body):
 
     If the project does not exist, a NotFoundError will be raised.
     """
-    db = req_local.db
+    db = req_local.db = model.Session()
     project = _must_find(db, model.Project, name=project)
     if project.nodes:
         raise BlockedError("Project has nodes still")
@@ -825,7 +825,7 @@ def project_create(project, request_body):
 
     If the project already exists, a DuplicateError will be raised.
     """
-    db = req_local.db
+    db = req_local.db = model.Session()
     _assert_absent(db, model.Project, name=project)
     project = model.Project(project)
     db.add(project)

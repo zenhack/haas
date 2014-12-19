@@ -14,7 +14,6 @@ def setup_db():
     engine = create_engine("sqlite:///:memory:")
     model.Base.metadata.create_all(engine)
     model.Session.configure(bind=engine)
-    req_local.db = model.Session()
     yield
     release_local(req_local)
 

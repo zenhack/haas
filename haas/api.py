@@ -133,15 +133,23 @@ def project_delete(project, request_body):
     db.commit()
 
 
-@rest_call('POST', '/project/<project>/connect_node')
-def project_connect_node(project, node):
+@rest_call('PUT', '/node/<node>/project')
+def project_connect_node(node, request_body):
     """Add a node to a project.
 
     If the node or project does not exist, a NotFoundError will be raised.
     """
-    db = model.Session()
-    project = _must_find(db, model.Project, project)
-    node = _must_find(db, model.Node, node)
+    malformed_input_err = model.MalformedInputError(
+            "Request body must be the project name as a JSON string.")
+    try:
+        project = json.loads(request_body)
+        if not isinstance(project, basestring):
+            raise malformed_input_err
+    except ValueError:
+            raise malformed_input_err
+    db = req_local.db = model.Session()
+    project = _must_find(db, model.Project, name=project)
+    node = _must_find(db, model.Node, uuid=node)
     project.nodes.append(node)
     db.commit()
 

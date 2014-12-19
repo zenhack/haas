@@ -28,6 +28,11 @@ import logging
 import os
 import json
 from schema import Schema, SchemaError, Optional
+from moc.rest import APIError
+
+class MalformedInputError(APIError):
+    """Indicates that the user input is invalid."""
+
 
 Base=declarative_base()
 Session = sessionmaker()
@@ -130,7 +135,8 @@ class Nic(UUIDModel):
         try:
             obj = Nic.schema.validate(obj)
         except SchemaError:
-            raise
+            raise MalformedInputError("Invalid nic specification: %s" %
+                    json.dumps(obj))
         return Nic(obj['mac_addr'], Port(obj['port']))
 
     def to_json(self):
@@ -173,7 +179,8 @@ class Node(UUIDModel):
         try:
             obj = Node.schema.validate(obj)
         except SchemaError:
-            raise  # TODO: find the proper APIError to raise here.
+            raise  MalformedInputError("Invalid node specification: %s" %
+                    json.dumps(obj))
         self = Node(
             ipmi_user=obj['ipmi']['user'],
             ipmi_host=obj['ipmi']['host'],

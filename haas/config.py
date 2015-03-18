@@ -50,7 +50,8 @@ def reset():
 
 import os.path
 def load(filename=None, requireConfigFile=True):
-    """Load the configuration from exactly one file (or file-like object)
+    """
+    Loads the configuration from exactly one file (or file-like object)
     indicated by (in order):
         1) The argument passed (most likely a command line argument or the
         testing framework)
@@ -81,7 +82,11 @@ def load(filename=None, requireConfigFile=True):
 
     loadedCfg = cfg.read(filename)
 
-    # Configure logging
+def configure_logging():
+    """Configure the logger according to the settings in the config file.
+
+    This must be called *after* the config is loaded.
+    """
     if cfg.has_option('general', 'log_level'):
         LOG_SET = ["CRITICAL", "DEBUG", "ERROR", "FATAL", "INFO", "WARN",
                    "WARNING"]

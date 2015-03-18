@@ -385,7 +385,13 @@ def main():
     There is a script located at ${source_tree}/scripts/haas, which invokes
     this function.
     """
-    config.load(requireConfigFile=False)
+    # Config file only required for serve/serve_networks
+    if len(sys.argv) >= 2 and sys.argv[1] in ['serve', 'serve_networks']:
+        config.load(requireConfigFile=True)
+    else:
+        config.load(requireConfigFile=False)
+
+    config.configure_logging()
 
     if len(sys.argv) < 2 or sys.argv[1] not in command_dict:
         # Display usage for all commands

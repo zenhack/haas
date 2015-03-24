@@ -52,6 +52,19 @@ def cmd(f):
     return wrapped
 
 
+cmds_needing_config = []
+
+def needs_config(f):
+    """A decorator indicating that a command requires a proper config file
+    in order to operate.
+
+    This is used for commands that require local state. Otherwise, it is
+    possible (though not guaranteed) that the client endpoint can be gathered
+    from the environmental variable."""
+
+    cmds_needing_config.append(f.__name__)
+
+
 def check_status_code(response):
     if response.status_code < 200 or response.status_code >= 300:
         sys.stderr.write('Unexpected status code: %d\n' % response.status_code)
@@ -83,6 +96,7 @@ def do_get(url):
 def do_delete(url):
     return check_status_code(requests.delete(url))
 
+@needs_config
 @cmd
 def serve():
     """Start the HaaS API server"""
@@ -386,10 +400,12 @@ def main():
     this function.
     """
     # Config file only required for serve/serve_networks
-    if len(sys.argv) >= 2 and sys.argv[1] in ['serve', 'serve_networks']:
+    if len(sys.argv) >= 2 and sys.argv[1] in ['serve', 'serve_networks',
+        'init_db']:
         config.load(requireConfigFile=True)
     else:
-        config.load(requireConfigFile=False)
+        if not os.get("HAAS_ENDPOINT"):
+            config.load(requireConfigFile=False)
 
     config.configure_logging()
 

@@ -30,8 +30,9 @@ DEFAULT_CONFIG_FILENAME='haas.cfg'
 # "public" interface
 cfg = ConfigParser.RawConfigParser()
 
-# Keep track of the loaded config file.
-cfgFile = None
+# Keep track of the proposed and loaded config files.
+config_file = loaded_config = None
+
 
 def reset():
     """
@@ -41,11 +42,11 @@ def reset():
     users of 'cfg' will need to use an accessor function instead of cfg
     directly since they could cache a stale copy.
     """
-    global cfg, cfgFile
+    global cfg, config_file, loaded_config
     cfg = ConfigParser.RawConfigParser()
 
-    temp = cfgFile
-    cfgFile = None
+    temp = config_file
+    config_file = None
     return temp
 
 import os.path
@@ -68,8 +69,9 @@ def load(filename=None, requireConfigFile=True):
     might want to get help without having a full configuration yet.
     """
 
-    global cfgFile
-    if cfgFile != None:
+    global config_file
+    if config_file != None:
+        logging.getlogger(__name__).notice("Tried to configure logging more than once")
         return
 
     if filename == None:
@@ -80,7 +82,7 @@ def load(filename=None, requireConfigFile=True):
             # Use the default
             filename = DEFAULT_CONFIG_FILENAME
 
-    loadedCfg = cfg.read(filename)
+    loaded_config = cfg.read(filename)
 
 def configure_logging():
     """Configure the logger according to the settings in the config file.
@@ -104,11 +106,11 @@ def configure_logging():
         logging.basicConfig(level=logging.WARNING)
 
     # Keep logs and raise error if unable to access the config file
-    if len(loadedCfg) == 0:
+    if len(loaded_config) == 0:
         logging.error("Unable to load config file %s", str(filename))
         if requireConfigFile:
             import api
             raise api.ServerError("Unable to load config file")
     else:
-        logging.info("Successfully parsed config file(s) %s", loadedCfg)
-        cfgFile = filename
+        logging.info("Successfully parsed config file(s) %s", loaded_config)
+        config_file = filename

@@ -40,8 +40,8 @@ Full Api spec:
     [POST] /node/<node_label>/nic/<nic_label>/detach_network
         # The body of this request is optional; if it is left out, the
         # nic is detached from *all* networks. Otherwise, the body should be
-        # a list of objects each of which identifies a netowrk either by its
-        # network id or either the channel by which it is attached.
+        # a list of objects each of which identifies a network by either its
+        # network id or the channel by which it is attached.
         [
             {
                 "channel": <channel_id>,

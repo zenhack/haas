@@ -30,7 +30,7 @@ return:
 
 Below is an example.
 
-## my_api_call
+## my\_api\_call
 
 `POST /url/path/to/<thing>`
 
@@ -78,7 +78,7 @@ installations.
 
 ## Networks
 
-### network_create
+### network\_create
 
 `PUT /network/<network>`
 
@@ -104,7 +104,7 @@ Possible errors:
 * 409, if a network by that name already exists.
 * See also bug #461
 
-### network_delete
+### network\_delete
 
 `DELETE /network/<network>`
 
@@ -123,7 +123,7 @@ Possible Errors:
     * The network is connected to a node or headnode.
     * There are pending actions involving the network.
 
-### show_network
+### show\_network
 
 `GET /network/<network>`
 
@@ -173,7 +173,7 @@ Additionally, the `show_networks` api call may return the channel identifier
 Where documentation specifies that the network driver should choose a
 default channel, the VLAN drivers choose `vlan/native`.
 
-### node_connect_network
+### node\_connect\_network
 
 `POST /node/<node>/nic/<nic>/connect_network`
 
@@ -211,7 +211,7 @@ Possible errors:
   * `<network>` is already attached to `<nic>` (possibly on a different channel).
   * The channel identifier is not legal for this network.
 
-### node_detach_network
+### node\_detach\_network
 
 `POST /node/<node>/nic/<nic>/detach_network`
 
@@ -242,7 +242,7 @@ Possible Errors:
 
 ## Nodes
 
-### node_register
+### node\_register
 
 `PUT /node/<node>`
 
@@ -256,7 +256,7 @@ Possible errors:
 
 * 409, if a node with the name `<node>` already exists
 
-### node_delete
+### node\_delete
 
 `DELETE /node/<node>`
 
@@ -266,7 +266,7 @@ Authorization requirements:
 
 * Administrative access.
 
-### node_register_nic
+### node\_register\_nic
 
 `PUT /node/<node>/nic/<nic>`
 
@@ -288,7 +288,7 @@ Possible errors:
 
 * 409 if `<node>` already has a nic named `<nic>`
 
-### node_delete_nic
+### node\_delete\_nic
 
 `DELETE /node/<node>/nic/<nic>`
 
@@ -298,14 +298,14 @@ Authorization requirements:
 
 * Administrative access.
 
-### node_power_cycle
+### node\_power\_cycle
 
 `POST /node/<node>/power_cycle`
 
 Power cycle the node named `<node>`, and set it's next boot device to
 PXE. If the node is powered off, this turns it on.
 
-### node_power_off
+### node\_power\_off
 
 `POST /node/<node>/power_off`
 
@@ -316,7 +316,7 @@ Authorization requirements:
 
 * Access to the project to which `<node>` is assigned (if any) or administrative access.
 
-### list_free_nodes
+### list\_free\_nodes
 
 `GET /free_nodes`
 
@@ -334,7 +334,7 @@ Authorization requirements:
 
 * No special access
 
-### list_project_nodes
+### list\_project\_nodes
 
 `GET /project/<project>/nodes`
 
@@ -352,7 +352,7 @@ Authorization requirements:
 
 * Access to `<project>` or administrative access
 
-### show_node
+### show\_node
 
 `GET /node/<node>`
 
@@ -383,7 +383,7 @@ Authorization requirements:
 
 ## Projects
 
-### project_create
+### project\_create
 
 `PUT /project/<project>`
 
@@ -397,7 +397,7 @@ Possible Errors:
 
 * 409, if the project already exists
 
-### project_delete
+### project\_delete
 
 `DELETE /project/<project>`
 
@@ -416,7 +416,7 @@ Possible Errors:
     * networks
     * headnodes
 
-### project_connect_node
+### project\_connect\_node
 
 `POST /project/<project>/connect_node`
 
@@ -438,7 +438,7 @@ Possible errors:
 * 404, if the node or project does not exist.
 * 409, if the node is not free.
 
-### project_detach_node
+### project\_detach\_node
 
 `POST /project/<project>/detach_node`
 
@@ -457,7 +457,7 @@ Authorization requirements:
 * 409, if the node is attached to any networks, or has pending network
   actions.
 
-### list_projects
+### list\_projects
 
 `GET /projects`
 
@@ -477,7 +477,7 @@ Authorization requirements:
 
 ## Headnodes
 
-### headnode_create
+### headnode\_create
 
 `PUT /headnode/<headnode>`
 
@@ -499,7 +499,7 @@ Possible errors:
 
 * 409, if a headnode named `<headnode>` already exists
 
-### headnode_delete
+### headnode\_delete
 
 `DELETE /headnode/<headnode>`
 
@@ -509,7 +509,7 @@ Authorization requirements:
 
 * Access to the project which owns `<headnode>` or administrative access.
 
-### headnode_start
+### headnode\_start
 
 `POST /headnode/<headnode>/start`
 
@@ -521,7 +521,7 @@ Authorization requirements:
 
 * Access to the project which owns `<headnode>` or administrative access.
 
-### headnode_stop
+### headnode\_stop
 
 `POST /headnode/<headnode>/stop`
 
@@ -532,7 +532,7 @@ Authorization requirements:
 
 * Access to the project which owns `<headnode>` or administrative access.
 
-### headnode_create_hnic
+### headnode\_create\_hnic
 
 `PUT /headnode/<headnode>/hnic/<hnic>`
 
@@ -549,7 +549,7 @@ Possible errors:
   * The headnode already has an hnic by the given name.
   * The headnode has already been started.
 
-### headnode_delete_hnic
+### headnode\_delete\_hnic
 
 `DELETE /headnode/<headnode>/hnic/<hnic>`
 
@@ -564,7 +564,7 @@ Possible errors:
 
 * 409, if the headnode has already been started.
 
-### headnode_connect_network
+### headnode\_connect\_network
 
 `POST /headnode/<headnode>/hnic/<hnic>/connect_network`
 
@@ -605,7 +605,7 @@ Possible errors:
 
 * 409, if the headnode has already been started.
 
-### headnode_detach_network
+### headnode\_detach\_network
 
 `POST /headnode/<headnode>/hnic/<hnic>/detach_network`
 
@@ -620,7 +620,7 @@ Possible errors:
 
 * 409, if the headnode has already been started.
 
-### list_project_headnodes
+### list\_project\_headnodes
 
 `GET /project/<project>/headnodes`
 
@@ -638,7 +638,7 @@ Authorization requirements:
 
 * Access to `<project>` or administrative access.
 
-### show_headnode
+### show\_headnode
 
 `GET /headnode/<headnode>`
 
@@ -667,7 +667,7 @@ Authorization requirements:
 
 ## Switches
 
-### switch_register
+### switch\_register
 
 Register a network switch of type `<type>`
 
@@ -693,7 +693,7 @@ Possible Errors:
 
 * 409, if a switch named `<switch>` already exists.
 
-### switch_delete
+### switch\_delete
 
 `DELETE /switch/<switch>`
 
@@ -710,7 +710,7 @@ Possible Errors:
 
 * 409, if not all of the switch's ports have been deleted.
 
-### switch_register_port
+### switch\_register\_port
 
 `PUT /switch/<switch>/port/<port>`
 
@@ -728,7 +728,7 @@ Possible Errors:
 
 * 409, if the port already exists
 
-### switch_delete_port
+### switch\_delete\_port
 
 `DELETE /switch/<switch>/port/<port>`
 
@@ -744,7 +744,7 @@ Possible Errors:
 
 * 409, if there is a nic attached to the port.
 
-### port_connect_nic
+### port\_connect\_nic
 
 `POST /switch/<switch>/port/<port>/connect_nic`
 
@@ -765,7 +765,7 @@ Possible errors:
 
 * 409, if the nic or port is already attached to something.
 
-### port_detach_nic
+### port\_detach\_nic
 
 `POST /switch/<switch>/port/<port>/detach_nic`
 
@@ -787,7 +787,7 @@ configurations.
 
 ## The `haas.ext.auth.database` auth backend
 
-### user_create
+### user\_create
 
 `PUT /auth/basic/user/<username>`
 
@@ -808,7 +808,7 @@ Possible errors:
 
 * 409, if the user already exists
 
-### user_delete
+### user\_delete
 
 `DELETE /auth/basic/user/<username>`
 
@@ -818,7 +818,7 @@ Authorization requirements:
 
 * Administrative access.
 
-### user_add_project
+### user\_add\_project
 
 `POST /auth/basic/user/<user>/add_project`
 
@@ -834,7 +834,7 @@ Authorization requirements:
 
 * Administrative access.
 
-### user_remove_project
+### user\_remove\_project
 
 `POST /auth/basic/user/<user>/remove_project`
 

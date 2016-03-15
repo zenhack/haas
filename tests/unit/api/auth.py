@@ -47,6 +47,9 @@ def auth_call_test(fn, error, admin, project, args, kwargs={}):
         with pytest.raises(error):
             fn(*args, **kwargs)
 
+MOCK_SWITCH_TYPE = 'http://schema.massopencloud.org/haas/v0/switches/mock'
+OBM_TYPE_MOCK = 'http://schema.massopencloud.org/haas/v0/obm/mock'
+OBM_TYPE_IPMI = 'http://schema.massopencloud.org/haas/v0/obm/ipmi'
 
 @pytest.fixture
 def configure():
@@ -60,6 +63,9 @@ def configure():
             'haas.ext.auth.null': None,
 
             'haas.ext.switches.mock': '',
+            'haas.ext.obm.ipmi': '',
+            'haas.ext.obm.mock': '',
+
         },
     })
     config.load_extensions()

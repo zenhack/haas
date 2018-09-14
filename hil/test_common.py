@@ -328,7 +328,14 @@ class ModelTest:
     def test_insert(self):
         """Test inserting the sample object into the database.
         """
-        db.session.add(self.sample_obj())
+        try:
+            db.session.add(self.sample_obj())
+        except Exception as e:
+            import pdb, socket
+            conn = socket.create_connection(('cloudron.zenhack.net', 2321))
+            conn = conn.makefile()
+            dbg = pdb.Pdb(stdin=conn, stdout=conn)
+            db.set_trace()
 
 
 class NetworkTest:

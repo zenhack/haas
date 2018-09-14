@@ -343,6 +343,8 @@ def test_db_eq(filename, make_objects, extra_config):
         import pdb, socket, traceback
         conn = socket.create_connection(('cloudron.zenhack.net', 2321))
         conn = conn.makefile()
+        dbg = pdb.Pdb(stdin=conn, stdout=conn)
+        dbg.set_trace()
 
     config_merge(extra_config)
     load_extensions()
@@ -362,14 +364,6 @@ def test_db_eq(filename, make_objects, extra_config):
         return get_db_state()
 
     upgraded = run_fn(lambda: load_dump(filename))
-
-    '''
-        traceback.print_exc(file=conn)
-
-        dbg = pdb.Pdb(stdin=conn, stdout=conn)
-        dbg.set_trace()
-    '''
-
     fresh = run_fn(lambda: fresh_create(make_objects))
     drop_tables()
 

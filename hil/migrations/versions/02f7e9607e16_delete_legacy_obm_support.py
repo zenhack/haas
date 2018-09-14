@@ -23,8 +23,10 @@ branch_labels = ('hil',)
 
 
 def upgrade():
-    op.drop_table('mock_obm')
-    op.drop_table('ipmi')
+    engine = op.get_bind()
+    for table in 'mock_obm', 'ipmi':
+        if engine.dialect.has_table(engine, table):
+            op.drop_table(table)
     op.drop_constraint(u'node_obm_id_fkey', 'node', type_='foreignkey')
     op.drop_column('node', 'obm_id')
     op.drop_table('obm')

